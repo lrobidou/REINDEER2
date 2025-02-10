@@ -1,0 +1,2 @@
+test_files/file1Q.fa
+test_files/file2Q.fa
