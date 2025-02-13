@@ -1285,7 +1285,7 @@ fn write_partition_to_csv(
 
     let mut csv_writer = Writer::from_writer(BufWriter::new(File::create(&output_path)?));
 
-    csv_writer.write_record(&["k", "m", "bf_size", "partition_number", "color_number", "abundance_number", "abundance_max, dense_option"])?;
+    csv_writer.write_record(&["k", "m", "bf_size", "partition_number", "color_number", "abundance_number", "abundance_max", "dense_option"])?;
     csv_writer.write_record(&[
             k.to_string(),
             m.to_string(),
