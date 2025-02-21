@@ -122,10 +122,10 @@ pub fn build_index(
                             eprintln!("Failed to determine header type for {}", path);
                         }
                     } else {
-                        println!("Path {} exists but is not a file", path);
+                        eprintln!("Path {} exists but is not a file", path);
                     }
                 }
-                Err(_) => println!("Path {} does not exist", path),
+                Err(_) => eprintln!("Path {} does not exist", path),
             }
         });
         if let Err(e) = write_bloom_filters_to_disk(
@@ -272,7 +272,7 @@ fn process_fasta_file(
                                 if dense_index.contains_key(&kmer_hash) {
                                     // update the vector with the right abundance
                                     if let Some(abundance_vector) = dense_index.get_mut(&kmer_hash) {
-                                        abundance_vector[path_num_global] = log_abundance as u8;
+                                        abundance_vector[path_num_global] = (log_abundance + 1) as u8;
                                     }
                                     atomic_dense_kmers_count.fetch_add(1, atomic::Ordering::Relaxed);
                                 } else if path_num_global <= threshold {
@@ -280,7 +280,7 @@ fn process_fasta_file(
                                     let mut abundance_vector: Vec<u8> = Vec::with_capacity(color_number_global);
                                     abundance_vector.resize(color_number_global, 0);
                                     let mut abundance_box: Box<Vec<u8>> = Box::from(abundance_vector);
-                                    abundance_box[path_num_global] = log_abundance as u8;
+                                    abundance_box[path_num_global] = (log_abundance + 1) as u8;
                                     dense_index.insert(kmer_hash, abundance_box);
                                     atomic_dense_kmers_count.fetch_add(1, atomic::Ordering::Relaxed);
                                 } else {
@@ -335,27 +335,26 @@ fn process_fasta_file(
                         .lock()
                         .expect("Failed to lock bloom filter");
                     for (kmer_hash, abundance_vector) in dense_index.iter() {
-                        let no_absence = count_zeros(&abundance_vector, path_num).expect("Unexpected behaviour in the dense index access");
-                        if no_absence > threshold {
-                            let color_count = path_num - no_absence + 1;
+                        let number_of_zeros = count_zeros(&abundance_vector, path_num).expect("Unexpected behaviour in the dense index access");
+                        if number_of_zeros > threshold {
+                            let color_count = path_num - number_of_zeros + 1;
                             atomic_dense_kmers_count.fetch_sub(color_count as u64, atomic::Ordering::Relaxed);
                             atomic_sparse_kmers_count.fetch_add(color_count as u64, atomic::Ordering::Relaxed);
-                            if no_absence > 1 {
-                                println!("{:#?}", abundance_vector);
-                            }
                             kmers_to_remove.push(*kmer_hash);
                             for (path_index, log_abundance) in abundance_vector.iter().take(path_num).enumerate() {
-                                partition_kmers // separate the kmers per partition
-                                    .entry(partition_index)
-                                    .or_insert_with(Vec::new)
-                                    .push((
-                                        *kmer_hash,
-                                        *log_abundance as u16,
-                                        path_index,
-                                        chunk_index,
-                                    ));
-                                if partition_kmers.len() >= max_map_size {
-                                    flush_map(&mut partition_kmers);
+                                if *log_abundance > 0 as u8 {
+                                    partition_kmers // separate the kmers per partition
+                                        .entry(partition_index)
+                                        .or_insert_with(Vec::new)
+                                        .push((
+                                            *kmer_hash,
+                                            (*log_abundance - 1) as u16,
+                                            path_index,
+                                            chunk_index,
+                                        ));
+                                    if partition_kmers.len() >= max_map_size {
+                                        flush_map(&mut partition_kmers);
+                                    }
                                 }
                             }
                         }
@@ -553,17 +552,19 @@ fn query_sequences_in_batches(
                                 if let Ok(hashmap) = maybe_hashmap {
                                     //  For each k-mer in this partition
                                     for (sequence_id, kmer_hash) in kmers {
-                                        let approximate_counts = 
+                                        let color_abundances = 
                                             // TODO opti pour récupérer directement la valeur avec match ou si None aller chercher dans le bitmap
                                             if hashmap.contains_key(&kmer_hash) {
                                                 let log_abundance_vector = hashmap.get(&kmer_hash).expect("failed to read the hashmap");
-                                                let approximate_counts: Vec<Vec<u16>> = log_abundance_vector
-                                                    .iter()
-                                                    .map(|log_abundance| {
-                                                        vec![approximate_value(*log_abundance as usize, base)]
-                                                    })
-                                                    .collect();
-                                                approximate_counts
+                                                let mut color_abundances = vec![Vec::new(); color_number];
+                                                for (color, log_abundance) in log_abundance_vector.iter().enumerate() {
+                                                        if *log_abundance == 0 as u8 {
+                                                            color_abundances[color].push(666 as usize);
+                                                        } else {
+                                                            color_abundances[color].push((*log_abundance - 1) as usize);
+                                                        }
+                                                    };
+                                                color_abundances
                                             } else {
                                                 // Compute base position
                                                 let base_position = compute_base_position(
@@ -582,19 +583,24 @@ fn query_sequences_in_batches(
                                                     abundance_number,
                                                     &mut color_abundances,
                                                 );
-                    
-                                                // Convert log abundances to approximate integer counts
-                                                let approximate_counts: Vec<Vec<u16>> = color_abundances
-                                                    .into_iter()
-                                                    .map(|abunds_for_color| {
-                                                        abunds_for_color
-                                                            .into_iter()
-                                                            .map(|log_abund| approximate_value(log_abund, base))
-                                                            .collect()
-                                                    })
-                                                    .collect();
-                                                approximate_counts
+                                                color_abundances
                                             };
+
+                                        // Convert log abundances to approximate integer counts
+                                        let approximate_counts: Vec<Vec<u16>> = color_abundances
+                                        .into_iter()
+                                        .map(|abunds_for_color| {
+                                            abunds_for_color
+                                                .into_iter()
+                                                .map(|log_abund| if log_abund == 666 {
+                                                        0
+                                                    } else {
+                                                        approximate_value(log_abund, base)
+                                                    })
+                                                .collect()
+                                        })
+                                        .collect();
+
                                         // Accumulate results in local_results
                                         let entry = local_results
                                             .entry(sequence_id.clone())
@@ -633,7 +639,13 @@ fn query_sequences_in_batches(
                                         .map(|abunds_for_color| {
                                             abunds_for_color
                                                 .into_iter()
-                                                .map(|log_abund| approximate_value(log_abund, base))
+                                                .map(|log_abund| {
+                                                    if log_abund == 666 {
+                                                        0
+                                                    } else {
+                                                        approximate_value(log_abund, base)
+                                                    }
+                                                })
                                                 .collect()
                                         })
                                         .collect();
@@ -1107,7 +1119,7 @@ fn update_color_abundances(
             }
         }
         if insert==false{
-            color_abundances[color].push(666); // important to record absent k-mers, to compute the median value, also, todo test
+            color_abundances[color].push(666); // important to record absent k-mers, to compute the median value, also, todo test 
         }
     }
 }
