@@ -52,7 +52,7 @@ fn main() -> io::Result<()> {
             let abundance = matches
                 .get_one::<String>("abundance")
                 .map(|s| s.parse::<usize>().expect("Invalid abundance number"))
-                .unwrap_or(256); // default abundance levels
+                .unwrap_or(255); // default abundance levels
 
             let abundance_max = matches
                 .get_one::<String>("abundance_max")
@@ -78,19 +78,20 @@ fn main() -> io::Result<()> {
             // CHECKS
             if dense_option {
                 if kmer > 32 {
-                    panic!("With the '--dense' option set to 'true', the k-mer size must be <= 32.")
+                    panic!("ERROR : With the '--dense' option set to 'true', the k-mer size must be <= 32.")
                 }
                 if abundance > 255 {
-                    println!("Warning : the abundance granularity exceeds the requirements of the '--dense' (<256). The abundance granularity is now set to 255.");
+                    println!("WARNING : the abundance granularity exceeds the requirements of the '--dense' (<256). The abundance granularity is now set to 255.");
 
                 }
             }
             let minimizer = if kmer < minimizer {
-                    println!("Warning : the minimizer size '{}' exceeds the k-mer size '{}'. The minimiser size is now set to '{}'", minimizer, kmer, kmer);
+                    println!("WARNING : the minimizer size '{}' exceeds the k-mer size '{}'. The minimiser size is now set to '{}'", minimizer, kmer, kmer);
                     kmer
                 } else {
                     minimizer
                 };
+            println!("");
 
             let start_time = Instant::now();
 
@@ -145,16 +146,17 @@ fn main() -> io::Result<()> {
 
             println!("Query complete in {:.2?}", start_time.elapsed());
         }
-        "merge" => {
-            // argument= path to a fof + output file
-            // let indexes_fof = matches
-            //     .get_one::<String>("indexes")
-            //     .expect("Required argument: indexes (file-of-index directories)");
-            // let output_dir = matches.get_one::<String>("output");
-            // merge_multiple_indexes(indexes_fof, output_dir.as_deref().map(|x| x.as_str()))?;
-        }
+        // "merge" => {
+        //     // argument= path to a fof + output file
+        //     // let indexes_fof = matches
+        //     //     .get_one::<String>("indexes")
+        //     //     .expect("Required argument: indexes (file-of-index directories)");
+        //     // let output_dir = matches.get_one::<String>("output");
+        //     // merge_multiple_indexes(indexes_fof, output_dir.as_deref().map(|x| x.as_str()))?;
+        // }
         _ => {
-            eprintln!("Invalid mode: {}. Use 'index', 'query', or 'merge'.", mode);
+            eprintln!("Invalid mode: {}. Use 'index' or 'query'.", mode);
+            // eprintln!("Invalid mode: {}. Use 'index', 'query', or 'merge'.", mode);
         }
     }
 

@@ -1850,1943 +1850,2563 @@ fn _display_progress(total_kmers: u64, start_time: Instant) {
 
 
 
-// /* TESTS */
+/* TESTS */
 
-// #[allow(unused_imports)]
-// mod tests {
+#[allow(unused_imports)]
+mod tests {
     
-//     use super::*;
-//     use bio::io::fasta;
-//     use std::io::Cursor;
+    use super::*;
+    use bio::io::fasta;
+    use std::io::Cursor;
 
-//     #[test]
-//     fn test_read_fof_file() {    
-//         let test_file_path = "test_fof.txt";
+    #[test]
+    fn test_read_fof_file() {    
+        let test_file_path = "test_fof.txt";
     
-//         // Create the test file
-//         {
-//             let mut test_file = File::create(test_file_path).expect("Failed to create test FOF file");
-//             writeln!(test_file, "/home/test/path/file1.fasta").expect("Failed to write to test FOF file");
-//             writeln!(test_file, "/home/test/path/file2.fasta").expect("Failed to write to test FOF file");
-//             writeln!(test_file, "file.fasta").expect("Failed to write to test FOF file");
-//         }
+        // Create the test file
+        {
+            let mut test_file = File::create(test_file_path).expect("Failed to create test FOF file");
+            writeln!(test_file, "/home/test/path/file1.fasta").expect("Failed to write to test FOF file");
+            writeln!(test_file, "/home/test/path/file2.fasta").expect("Failed to write to test FOF file");
+            writeln!(test_file, "file.fasta").expect("Failed to write to test FOF file");
+        }
     
-//         // Call the function being tested
-//         let (file_paths, _col_nb) = read_fof_file(test_file_path).unwrap();
+        // Call the function being tested
+        let (file_paths, _col_nb) = read_fof_file(test_file_path).unwrap();
     
-//         // Define the expected result
-//         let expected = vec![
-//             "/home/test/path/file1.fasta".to_string(),
-//             "/home/test/path/file2.fasta".to_string(),
-//             "file.fasta".to_string(),
-//         ];
+        // Define the expected result
+        let expected = vec![
+            "/home/test/path/file1.fasta".to_string(),
+            "/home/test/path/file2.fasta".to_string(),
+            "file.fasta".to_string(),
+        ];
     
-//         // Assertions
-//         assert_eq!(file_paths, expected);
+        // Assertions
+        assert_eq!(file_paths, expected);
     
-//         // Cleanup
-//         if Path::new(test_file_path).exists() {
-//             std::fs::remove_file(test_file_path).expect("Failed to remove test FOF file");
-//         }
-//     }
+        // Cleanup
+        if Path::new(test_file_path).exists() {
+            std::fs::remove_file(test_file_path).expect("Failed to remove test FOF file");
+        }
+    }
 
-//     /*
-//     #[test]
-//     fn test_is_valid_kmer() {
-//         assert_eq!(is_valid_kmer(b"ACCCGNTT"), false);
-//     }
-//     */
+    /*
+    #[test]
+    fn test_is_valid_kmer() {
+        assert_eq!(is_valid_kmer(b"ACCCGNTT"), false);
+    }
+    */
 
-//     #[test]
-//     fn test_extract_count_from_logan_header2() {
-//         let header = ">0 ka:f:X  L:+:5:+ L:+:5392806:+  L:-:1:-"; 
-//         let result = extract_count_from_logan_header(header);
-//         assert!(result.is_err());
-//     }
-//     #[test]
-//     fn test_extract_count_from_logan_header3() {
-//         let header = ">0 ka:f:12.4   L:+:5:+ L:+:5392806:+  L:-:1:-";
-//         let expected = 12;
-//         let result = extract_count_from_logan_header(header).unwrap();
-//         assert_eq!(result,expected);
-//     }
-//     #[test]
-//     fn test_extract_count_from_logan_header4() {
-//         let header = ">0 ka:f:65537   L:+:5:+ L:+:5392806:+  L:-:1:-";
-//         let expected = 65535;
-//         let result = extract_count_from_logan_header(header).unwrap();
-//         assert_eq!(result,expected);
-//     }
+    #[test]
+    fn test_extract_count_from_logan_header2() {
+        let header = ">0 ka:f:X  L:+:5:+ L:+:5392806:+  L:-:1:-"; 
+        let result = extract_count_from_logan_header(header);
+        assert!(result.is_err());
+    }
+    #[test]
+    fn test_extract_count_from_logan_header3() {
+        let header = ">0 ka:f:12.4   L:+:5:+ L:+:5392806:+  L:-:1:-";
+        let expected = 12;
+        let result = extract_count_from_logan_header(header).unwrap();
+        assert_eq!(result,expected);
+    }
+    #[test]
+    fn test_extract_count_from_logan_header4() {
+        let header = ">0 ka:f:65537   L:+:5:+ L:+:5392806:+  L:-:1:-";
+        let expected = 65535;
+        let result = extract_count_from_logan_header(header).unwrap();
+        assert_eq!(result,expected);
+    }
 
-//     #[test]
-//     fn test_compute_log_abundance_gives_zero() {
-//         let result = compute_log_abundance(1, 2.0, 65535);
-//         assert_eq!(result, 0, "expected log for 1 to be 0");
+    #[test]
+    fn test_compute_log_abundance_gives_zero() {
+        let result = compute_log_abundance(1, 2.0, 65535);
+        assert_eq!(result, 0, "expected log for 1 to be 0");
 
-//         let result2 = compute_log_abundance(1, 1.5, 65535);
-//         assert_eq!(result2, 0, "expected log for 1 to be 0");
-//     }
+        let result2 = compute_log_abundance(1, 1.5, 65535);
+        assert_eq!(result2, 0, "expected log for 1 to be 0");
+    }
 
-//     #[test]
-//     fn test_compute_log_abundance_is_linear() {
-//         let b = 1.1;
-//         for n in 1..9 {
-//             let result = compute_log_abundance(n, b, 65535);
-//             assert_eq!(result, n-1, "expected abundance function to be linear for the first values");
-//         }
-//         assert_eq!(compute_log_abundance(10, b, 65535), compute_log_abundance(11, b, 65535), "expected abundance function not to be linear at the threshold");
-//     }
+    #[test]
+    fn test_compute_log_abundance_is_linear() {
+        let b = 1.1;
+        for n in 1..9 {
+            let result = compute_log_abundance(n, b, 65535);
+            assert_eq!(result, n-1, "expected abundance function to be linear for the first values");
+        }
+        assert_eq!(compute_log_abundance(10, b, 65535), compute_log_abundance(11, b, 65535), "expected abundance function not to be linear at the threshold");
+    }
 
-//     #[test]
-//     fn test_compute_log_abundance_positive_values() {
-//         let result = compute_log_abundance(8, 2.0, 65535);
-//         assert!(((result as f64) - 3.0).abs() < 1e-6, "expected log base 2 of 8 to be 3");
-//     }
+    #[test]
+    fn test_compute_log_abundance_positive_values() {
+        let result = compute_log_abundance(8, 2.0, 65535);
+        assert!(((result as f64) - 3.0).abs() < 1e-6, "expected log base 2 of 8 to be 3");
+    }
    
-//     #[test]
-//     fn test_compute_log_abundance_with_large_values() {
-//         let result = compute_log_abundance(65535, 2.0, 65535);
-//         let expected_log = (65535 as f64).log2().floor() as u16; 
-//         assert_eq!(result, expected_log,"expected log base 2 of 65535 to be {}, but got {}", expected_log, result);
-//     }
+    #[test]
+    fn test_compute_log_abundance_with_large_values() {
+        let result = compute_log_abundance(65535, 2.0, 65535);
+        let expected_log = (65535 as f64).log2().floor() as u16; 
+        assert_eq!(result, expected_log,"expected log base 2 of 65535 to be {}, but got {}", expected_log, result);
+    }
 
-//     #[test]
-//     fn test_compute_log_abundance_above_max() {
-//         let result = compute_log_abundance(65535, 2.0, 256);
-//         let expected_log = (256 as f64).log2().floor() as u16;
-//         assert_eq!(result, expected_log,"expected abundance to be scaled at log base 2 of 256 should have been {}, but got {}", expected_log, result);
-//     }
+    #[test]
+    fn test_compute_log_abundance_above_max() {
+        let result = compute_log_abundance(65535, 2.0, 256);
+        let expected_log = (256 as f64).log2().floor() as u16;
+        assert_eq!(result, expected_log,"expected abundance to be scaled at log base 2 of 256 should have been {}, but got {}", expected_log, result);
+    }
 
-//     #[test]
-//     fn test_determine_header_type_and_extract_count() {
-//         // Test determining header type
-//         let bcalm_header = ">0 km:f:12.4 L:+:5:+";
-//         let logan_header = ">0 ka:f:7.8 L:+:5392806:+";
-//         let unsupported_header = ">0 other:f:10.0 L:+:1:-";
+    #[test]
+    fn test_determine_header_type_and_extract_count() {
+        // Test determining header type
+        let bcalm_header = ">0 km:f:12.4 L:+:5:+";
+        let logan_header = ">0 ka:f:7.8 L:+:5392806:+";
+        let unsupported_header = ">0 other:f:10.0 L:+:1:-";
     
-//         let bcalm_type = determine_header_type(bcalm_header).unwrap();
-//         assert!(matches!(bcalm_type, HeaderType::BCalm));
+        let bcalm_type = determine_header_type(bcalm_header).unwrap();
+        assert!(matches!(bcalm_type, HeaderType::BCalm));
     
-//         let logan_type = determine_header_type(logan_header).unwrap();
-//         assert!(matches!(logan_type, HeaderType::Logan));
+        let logan_type = determine_header_type(logan_header).unwrap();
+        assert!(matches!(logan_type, HeaderType::Logan));
     
-//         let unsupported_type = determine_header_type(unsupported_header);
-//         assert!(unsupported_type.is_err());
+        let unsupported_type = determine_header_type(unsupported_header);
+        assert!(unsupported_type.is_err());
     
-//         // Test extracting counts
-//         let count_from_bcalm = extract_count(bcalm_header, &HeaderType::BCalm).unwrap();
-//         assert_eq!(count_from_bcalm, 12);
+        // Test extracting counts
+        let count_from_bcalm = extract_count(bcalm_header, &HeaderType::BCalm).unwrap();
+        assert_eq!(count_from_bcalm, 12);
     
-//         let count_from_logan = extract_count(logan_header, &HeaderType::Logan).unwrap();
-//         assert_eq!(count_from_logan, 8);
-//     }
+        let count_from_logan = extract_count(logan_header, &HeaderType::Logan).unwrap();
+        assert_eq!(count_from_logan, 8);
+    }
 
-//     // #[test]
-//     // #[should_panic(expected = "value and base must be greater than 0")]
-//     // fn test_compute_log_abundance_zero_count_value() {
-//     //     compute_log_abundance(0, 2.0);
-//     // }
+    #[test]
+    #[should_panic(expected = "value and base must be greater than 0")]
+    fn test_compute_log_abundance_zero_count_value() {
+        compute_log_abundance(0, 2.0, 65535);
+    }
 
-//     // #[test]
-//     // #[should_panic(expected = "value and base must be greater than 0")]
-//     // fn test_compute_log_abundance_non_positive_base() {
-//     //     compute_log_abundance(8, 0.0);
-//     // }
-//     #[test]
-//     fn test_approximate_value_with_positive_values() {
-//         let result = approximate_value(3, 2.0);
-//         assert_eq!(result, 8, "expected 2^3 to be 8");
-//     }
+    #[test]
+    #[should_panic(expected = "value and base must be greater than 0")]
+    fn test_compute_log_abundance_non_positive_base() {
+        compute_log_abundance(8, 0.0, 65535);
+    }
+    #[test]
+    fn test_approximate_value_with_positive_values() {
+        let result = approximate_value(3, 2.0);
+        assert_eq!(result, 8, "expected 2^3 to be 8");
+    }
 
-//     #[test]
-//     #[should_panic(expected = "base must be greater than 0")]
-//     fn test_approximate_value_with_zero_base() {
-//         approximate_value(3, 0.0);
-//     }
+    #[test]
+    #[should_panic(expected = "base must be greater than 0")]
+    fn test_approximate_value_with_zero_base() {
+        approximate_value(3, 0.0);
+    }
 
-//     #[test]
-//     fn test_approximate_value_with_fractional_base() {
-//         let base = 2.0f64.sqrt();
-//         // with sqrt(2), when the approximation increase by 2, the abundance should double
-//         // since log_{sqrt(2)} (x) = 2 log_2(x)
-//         let result1 = approximate_value(6, base);
-//         let result2 = approximate_value(8, base);
-//         let result3 = approximate_value(10, base);
-//         assert_eq!(result2/2, result1, "check approximation consistency with base sqrt(2)");
-//         assert_eq!(result3/2, result2, "check approximation consistency with base sqrt(2)");
-//     }
+    #[test]
+    fn test_approximate_value_with_fractional_base() {
+        let base = 2.0f64.sqrt();
+        // with sqrt(2), when the approximation increase by 2, the abundance should double
+        // since log_{sqrt(2)} (x) = 2 log_2(x)
+        let result1 = approximate_value(6, base);
+        let result2 = approximate_value(8, base);
+        let result3 = approximate_value(10, base);
+        assert_eq!(result2/2, result1, "check approximation consistency with base sqrt(2)");
+        assert_eq!(result3/2, result2, "check approximation consistency with base sqrt(2)");
+    }
 
-//     #[test]
-//     fn test_compute_base_with_positive_values() {
-//         let result = compute_base(16, 1024);
-//         assert!((result - 1.5635206).abs() < 1e-6, "expected base for 16 with max 1024 to be ~1.56");
-//     }
+    #[test]
+    fn test_compute_base_with_positive_values() {
+        let result = compute_base(16, 1024);
+        assert!((result - 1.5635206).abs() < 1e-6, "expected base for 16 with max 1024 to be ~1.56");
+    }
 
-//     #[test]
-//     fn test_compute_base_with_large_abundance_number() {
-//         let result = compute_base(32, 1024);
-//         assert!((result - 1.218096).abs() < 1e-6, "expected base for 32 with max 1024 to be approximately ~1.22");
-//     }
+    #[test]
+    fn test_compute_base_with_large_abundance_number() {
+        let result = compute_base(32, 1024);
+        assert!((result - 1.218096).abs() < 1e-6, "expected base for 32 with max 1024 to be approximately ~1.22");
+    }
 
-//     #[test]
-//     fn test_compute_base_with_small_abundance_number() {
-//         let result = compute_base(8, 1024);
-//         assert!((result - 2.740397).abs() < 1e-6, "expected base for 8 with max 1024 to be ~2.74");
-//     }
+    #[test]
+    fn test_compute_base_with_small_abundance_number() {
+        let result = compute_base(8, 1024);
+        assert!((result - 2.740397).abs() < 1e-6, "expected base for 8 with max 1024 to be ~2.74");
+    }
 
-//     #[test]
-//     #[should_panic(expected = "abundance number must be greater than 0")]
-//     fn test_compute_base_with_zero_abundance_number() {
-//         compute_base(0, 1024);
-//     }
+    #[test]
+    #[should_panic(expected = "abundance number must be greater than 0")]
+    fn test_compute_base_with_zero_abundance_number() {
+        compute_base(0, 1024);
+    }
 
-//     #[test]
-//     #[should_panic(expected = "Maximal abundance must be greater than 0")]
-//     fn test_compute_base_with_zero_abundance_max() {
-//         compute_base(16, 0);
-//     }
+    #[test]
+    #[should_panic(expected = "Maximal abundance must be greater than 0")]
+    fn test_compute_base_with_zero_abundance_max() {
+        compute_base(16, 0);
+    }
 
 
     
-//     #[test]
-//     fn test_kmer_hash_minimizers() {
-//         let seq_str = "ACGTACGTACGTACGT";
-//         let seq_bytes = seq_str.as_bytes();
+    #[test]
+    fn test_kmer_hash_minimizers() {
+        let seq_str = "ACGTACGTACGTACGT";
+        let seq_bytes = seq_str.as_bytes();
 
-//         let k = 7;
-//         let m = 3;
+        let k = 7;
+        let m = 3;
 
-//         let pairs: Vec<(u64, u64)> = kmer_minimizers_seq_level(seq_bytes, k, m).collect();
+        let pairs: Vec<(u64, u64)> = kmer_minimizers_seq_level(seq_bytes, k, m).collect();
 
-//         // there should be seq.len() - k + 1 pairs.
-//         assert_eq!(pairs.len(), seq_bytes.len() - k + 1);
+        // there should be seq.len() - k + 1 pairs.
+        assert_eq!(pairs.len(), seq_bytes.len() - k + 1);
 
-//     }
+    }
     
   
 
 
-//     #[test]
-//     fn test_process_fasta_record() {
-//         let fasta_input = ">0 ka:f:3.3   L:+:5:+ L:+:5392806:+  L:-:1:-\nAGGAGTAGATACCAGAGATAACGATACAGGTGCGA\n";
+    #[test]
+    fn test_process_fasta_record() {
+        let fasta_input = ">0 ka:f:3.3   L:+:5:+ L:+:5392806:+  L:-:1:-\nAGGAGTAGATACCAGAGATAACGATACAGGTGCGA\n";
 
-//         let reader = fasta::Reader::new(Cursor::new(fasta_input));
-//         let result = reader.records().next().expect("failed to read record");
+        let reader = fasta::Reader::new(Cursor::new(fasta_input));
+        let result = reader.records().next().expect("failed to read record");
 
-//         let base = 2.0; 
-//         let processed = process_fasta_record(result, base, 65535, &HeaderType::Logan);
+        let base = 2.0; 
+        let processed = process_fasta_record(result, base, 65535, &HeaderType::Logan);
 
-//         assert!(processed.is_ok(), "processing failed");
-//         let (seq, log_abundance) = processed.unwrap();
-//         let expected_seq = b"AGGAGTAGATACCAGAGATAACGATACAGGTGCGA".to_vec();
-//         let expected_log_abundance = 1; // log2(3) rounds to 1
+        assert!(processed.is_ok(), "processing failed");
+        let (seq, log_abundance) = processed.unwrap();
+        let expected_seq = b"AGGAGTAGATACCAGAGATAACGATACAGGTGCGA".to_vec();
+        let expected_log_abundance = 1; // log2(3) rounds to 1
 
-//         assert_eq!(seq, expected_seq, "sequence mismatch");
-//         assert_eq!(log_abundance, expected_log_abundance, "log abundance mismatch");
-//     }
+        assert_eq!(seq, expected_seq, "sequence mismatch");
+        assert_eq!(log_abundance, expected_log_abundance, "log abundance mismatch");
+    }
    
     
-// /*
-//     #[test]
-//     fn test_update_bloom_filter_memory() {
-//         // Wrap RoaringBitmap in a Mutex
-//         let bloom_filter = std::sync::Mutex::new(RoaringBitmap::new());
+/*
+    #[test]
+    fn test_update_bloom_filter_memory() {
+        // Wrap RoaringBitmap in a Mutex
+        let bloom_filter = std::sync::Mutex::new(RoaringBitmap::new());
     
-//         let kmer_hashes = vec![42, 84, 126]; 
-//         let partitioned_bf_size = 16;
-//         let color_number = 3; 
-//         let path_num = 1;
-//         let abundance_number = 2; 
-//         let log_abundance = 1; 
+        let kmer_hashes = vec![42, 84, 126]; 
+        let partitioned_bf_size = 16;
+        let color_number = 3; 
+        let path_num = 1;
+        let abundance_number = 2; 
+        let log_abundance = 1; 
     
-//         let expected_positions: Vec<u32> = kmer_hashes
-//             .iter()
-//             .map(|&hash| {
-//                 compute_location_filter(
-//                     hash,
-//                     partitioned_bf_size,
-//                     color_number,
-//                     path_num,
-//                     abundance_number,
-//                     log_abundance,
-//                 ) as u32
-//             })
-//             .collect();
+        let expected_positions: Vec<u32> = kmer_hashes
+            .iter()
+            .map(|&hash| {
+                compute_location_filter(
+                    hash,
+                    partitioned_bf_size,
+                    color_number,
+                    path_num,
+                    abundance_number,
+                    log_abundance,
+                ) as u32
+            })
+            .collect();
     
-//         // Pass a reference to the Mutex<RoaringBitmap> instead of &mut RoaringBitmap
-//         update_bloom_filter_memory(
-//             &bloom_filter,
-//             &kmer_hashes,
-//             partitioned_bf_size,
-//             color_number,
-//             path_num,
-//             abundance_number,
-//             log_abundance,
-//         );
+        // Pass a reference to the Mutex<RoaringBitmap> instead of &mut RoaringBitmap
+        update_bloom_filter_memory(
+            &bloom_filter,
+            &kmer_hashes,
+            partitioned_bf_size,
+            color_number,
+            path_num,
+            abundance_number,
+            log_abundance,
+        );
     
-//         // Lock the mutex before checking the bitmap
-//         let bloom_filter_guard = bloom_filter.lock().unwrap();
+        // Lock the mutex before checking the bitmap
+        let bloom_filter_guard = bloom_filter.lock().unwrap();
     
-//         for &expected_position in &expected_positions {
-//             assert!(
-//                 bloom_filter_guard.contains(expected_position),
-//                 "Expected position {} not found in bloom filter",
-//                 expected_position
-//             );
-//         }
+        for &expected_position in &expected_positions {
+            assert!(
+                bloom_filter_guard.contains(expected_position),
+                "Expected position {} not found in bloom filter",
+                expected_position
+            );
+        }
     
-//         assert_eq!(
-//             bloom_filter_guard.len(),
-//             expected_positions.len().try_into().unwrap(),
-//             "Unexpected number of entries in bloom filter"
-//         );
-//     }
-// */
-//     #[test]
-//     fn test_update_color_abundances() {
-//         use roaring::RoaringBitmap;
+        assert_eq!(
+            bloom_filter_guard.len(),
+            expected_positions.len().try_into().unwrap(),
+            "Unexpected number of entries in bloom filter"
+        );
+    }
+*/
+    #[test]
+    fn test_update_color_abundances() {
+        use roaring::RoaringBitmap;
 
-//         let mut bitmap = RoaringBitmap::new();
-//         let base_position = 100;
-//         let color_number = 3; 
-//         let abundance_number = 2; 
+        let mut bitmap = RoaringBitmap::new();
+        let base_position = 100;
+        let color_number = 3; 
+        let abundance_number = 2; 
 
-//         bitmap.insert((base_position + 0) as u32); // color 0, abundance 0
-//         bitmap.insert((base_position + 1) as u32); // color 0, abundance 1
-//         bitmap.insert((base_position + 2) as u32); // color 1, abundance 0
+        bitmap.insert((base_position + 0) as u32); // color 0, abundance 0
+        bitmap.insert((base_position + 1) as u32); // color 0, abundance 1
+        bitmap.insert((base_position + 2) as u32); // color 1, abundance 0
 
-//         let mut color_abundances = vec![vec![]; color_number];
+        let mut color_abundances = vec![vec![]; color_number];
 
-//         update_color_abundances(&bitmap, base_position, color_number, abundance_number, &mut color_abundances);
+        update_color_abundances(&bitmap, base_position, color_number, abundance_number, &mut color_abundances);
 
-//         let expected_color_abundances = vec![
-//             vec![0], // color 0 has abundance levels 0 and 1 -> will keep the min
-//             vec![0],    // color 1 has abundance level 0
-//             vec![0],     // color 2 has no abundance
-//         ];
+        let expected_color_abundances = vec![
+            vec![0], // color 0 has abundance levels 0 and 1 -> will keep the min
+            vec![0],    // color 1 has abundance level 0
+            vec![666],     // color 2 has no abundance, set to 666 instead (handle later in the pipeline)
+        ];
 
-//         assert_eq!(
-//             color_abundances, expected_color_abundances,
-//             "Color abundances mismatch: expected {:?}, got {:?}",
-//             expected_color_abundances, color_abundances
-//         );
-//     }
-
-
-//     #[test]
-//     fn test_write_and_read_partition_csv() {
-//         let bf_dir = "test_bf_dir";
-//         let output_csv = "index_info.csv";
-//         let k = 31;
-//         let m = 15;
-//         let bf_size = 1024;
-//         let partition_number = 4;
-//         let color_number = 3;
-//         let abundance_number = 2;
-//         let abundance_max = 512;
-
-//         fs::create_dir_all(bf_dir).expect("Failed to create test directory");
-
-//         let write_result = write_partition_to_csv(
-//             bf_dir,
-//             k,
-//             m,
-//             bf_size,
-//             partition_number,
-//             color_number,
-//             abundance_number,
-//             abundance_max,
-//             dense_option,
-//         );
-//         assert!(write_result.is_ok(), "Failed to write CSV");
-
-//         let read_result = read_partition_from_csv(bf_dir, output_csv);
-//         assert!(read_result.is_ok(), "Failed to read CSV");
-
-//         let (read_k, read_m, read_bf_size, read_partition_number, read_color_number, read_abundance_number, read_abundance_max) =
-//             read_result.unwrap();
-
-//         assert_eq!(read_k, k, "Mismatch in k value");
-//         assert_eq!(read_m, m, "Mismatch in m value");
-//         assert_eq!(read_bf_size, bf_size, "Mismatch in bf_size value");
-//         assert_eq!(read_partition_number, partition_number, "Mismatch in partition_number value");
-//         assert_eq!(read_color_number, color_number, "Mismatch in color_number value");
-//         assert_eq!(read_abundance_number, abundance_number, "Mismatch in abundance_number value");
-//         assert_eq!(read_abundance_max, abundance_max, "Mismatch in abundance_max value");
-
-//         fs::remove_dir_all(bf_dir).expect("Failed to remove test directory");
-//     }
+        assert_eq!(
+            color_abundances, expected_color_abundances,
+            "Color abundances mismatch: expected {:?}, got {:?}",
+            expected_color_abundances, color_abundances
+        );
+    }
 
 
-//     // TODO
-//     // #[test]
-//     // fn test_build_and_query_index_single() {
-//     //     let test_dir = "test_files_bq0";
-//     //     fs::create_dir_all(test_dir).expect("Failed to create test directory");
+    #[test]
+    fn test_write_and_read_partition_csv() {
+        let bf_dir = "test_bf_dir";
+        let output_csv = "index_info.csv";
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024;
+        let partition_number = 4;
+        let color_number = 3;
+        let abundance_number = 2;
+        let abundance_max = 512;
+        let dense_option = false;
+
+        fs::create_dir_all(bf_dir).expect("Failed to create test directory");
+
+        let write_result = write_partition_to_csv(
+            bf_dir,
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            dense_option,
+        );
+        assert!(write_result.is_ok(), "Failed to write CSV");
+
+        let read_result = read_partition_from_csv(bf_dir, output_csv);
+        assert!(read_result.is_ok(), "Failed to read CSV");
+
+        let (read_k, read_m, read_bf_size, read_partition_number, read_color_number, read_abundance_number, read_abundance_max, read_dense_option) =
+            read_result.unwrap();
+
+        assert_eq!(read_k, k, "Mismatch in k value");
+        assert_eq!(read_m, m, "Mismatch in m value");
+        assert_eq!(read_bf_size, bf_size, "Mismatch in bf_size value");
+        assert_eq!(read_partition_number, partition_number, "Mismatch in partition_number value");
+        assert_eq!(read_color_number, color_number, "Mismatch in color_number value");
+        assert_eq!(read_abundance_number, abundance_number, "Mismatch in abundance_number value");
+        assert_eq!(read_abundance_max, abundance_max, "Mismatch in abundance_max value");
+        assert_eq!(read_dense_option, dense_option, "Mismatch in dense_option value");
+
+        fs::remove_dir_all(bf_dir).expect("Failed to remove test directory");
+    }
+
+
+    #[test]
+    fn test_build_and_query_index_single_sparse() {
+        let test_dir = "test_files_bq0";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
     
-//     //     let fof_path = format!("{}/fof.txt", test_dir);
-//     //     let file1_path = format!("{}/file1Q.fa", test_dir);
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
     
-//     //     {
-//     //         let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
-//     //         writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
-//     //     }
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+        }
         
-//     //     {
-//     //         let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
-//     //         writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
-//     //         writeln!(file1, ">seq2 ka:f:30").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
-//     //         writeln!(file1, ">seq3 ka:f:2").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
-//     //     }
+        {
+            let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
+            writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
+            writeln!(file1, ">seq2 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
+            writeln!(file1, ">seq3 ka:f:2").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
+        }
     
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024 * 1024;
+        let partition_number = 4;
+        let color_number = 1;
+        let abundance_number = 256; 
+        let abundance_max = 65535;
+        let dense_option = false;
+        let threshold = color_number;
     
+        let (_file_paths, index_dir) = build_index(
+            vec![file1_path.clone()],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+    
+        let query_results_path = format!("{}/query_results.csv", index_dir);
         
-//     //     let k = 31;
-//     //     let m = 15;
-//     //     let bf_size = 1024 * 1024;
-//     //     let partition_number = 4;
-//     //     let color_number = 1;
-//     //     let abundance_number = 256; 
-//     //     let abundance_max = 65535;
+        query_index(&file1_path, &index_dir, &query_results_path, false)
+            .expect("Failed to query sequences");
     
-//     //     let (_file_paths, index_dir) = build_index(
-//     //         vec![file1_path.clone()],
-//     //         k,
-//     //         m,
-//     //         bf_size,
-//     //         partition_number,
-//     //         color_number,
-//     //         abundance_number,
-//     //         abundance_max,
-//     //         Some(&test_dir),
-//     //     )
-//     //     .expect("Failed to build index");
-    
-//     //     let query_results_path = format!("{}/query_results.csv", index_dir);
+        let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let header = record[0].to_string(); // Now reading the header instead of the sequence ID
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((header, color, abundance));
+        }
         
-//     //     query_bloom_filter(&file1_path, &index_dir, &query_results_path, false)
-//     //         .expect("Failed to query sequences");
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
     
-//     //     let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
-//     //     let mut results: Vec<(String, usize, usize)> = Vec::new();
-//     //     for record in reader.records() {
-//     //         let record = record.expect("Failed to read record");
-//     //         let header = record[0].to_string(); // Now reading the header instead of the sequence ID
-//     //         let color: usize = record[1].parse().expect("Failed to parse color");
-//     //         let abundance: usize = record[2].parse().expect("Failed to parse abundance");
-//     //         results.push((header, color, abundance));
-//     //     }
+        let mut expected_results = vec![
+            (">seq1 ka:f:30".to_string(), 0, 29),
+            (">seq2 ka:f:30".to_string(), 0, 29),
+            (">seq3 ka:f:2".to_string(), 0, 2),  // Values with errors due to log conversion
+        ];
+    
+        results.sort();
+        expected_results.sort();
+
+
+
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+    
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+    }
+
+    #[test]
+    fn test_build_and_query_index_single_dense() {
+        let test_dir = "test_files_bq0d";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
+    
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+
+    
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+        }
         
-//     //     assert!(
-//     //         !results.is_empty(),
-//     //         "Empty results"
-//     //     );
+        {
+            let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
+            writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
+            writeln!(file1, ">seq2 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
+            writeln!(file1, ">seq3 ka:f:2").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
+        }
     
-//     //     let mut expected_results = vec![
-//     //         (">seq1 ka:f:30".to_string(), 0, 29),
-//     //         (">seq2 ka:f:30".to_string(), 0, 29),
-//     //         (">seq3 ka:f:2".to_string(), 0, 2),  // Values with errors due to log conversion
-//     //     ];
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024 * 1024;
+        let partition_number = 4;
+        let color_number = 1;
+        let abundance_number = 255; 
+        let abundance_max = 65535;
+        let dense_option = true;
+        let threshold = color_number;
     
-//     //     results.sort();
-//     //     expected_results.sort();
-
-
-
-//     //     for (expected, actual) in expected_results.iter().zip(results.iter()) {
-//     //         assert_eq!(
-//     //             expected, actual,
-//     //             "Mismatch: expected {:?}, got {:?}",
-//     //             expected, actual
-//     //         );
-//     //     }
+        let (_file_paths, index_dir) = build_index(
+            vec![file1_path.clone()],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
     
-//     //     fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
-//     // }
-
-
-
-//     // TODO
-//     // #[test]
-//     // fn test_build_and_query_index() {
-//     //     let test_dir = "test_files_bq1";
-//     //     fs::create_dir_all(test_dir).expect("Failed to create test directory");
-    
-//     //     let fof_path = format!("{}/fof.txt", test_dir);
-//     //     let file1_path = format!("{}/file1Q.fa", test_dir);
-//     //     let file2_path = format!("{}/file2Q.fa", test_dir);
-    
-//     //     {
-//     //         let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
-//     //         writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
-//     //     }
+        let query_results_path = format!("{}/query_results.csv", index_dir);
         
-//     //     {
-//     //         let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
-//     //         writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
-//     //         writeln!(file1, ">seq2 ka:f:30").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
-//     //         writeln!(file1, ">seq3 ka:f:2").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
-//     //     }
+        query_index(&file1_path, &index_dir, &query_results_path, false)
+            .expect("Failed to query sequences");
     
-//     //     {
-//     //         let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
-//     //         writeln!(file2, ">seq4 ka:f:1000").expect("Failed to write header");
-//     //         writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG").expect("Failed to write sequence");
-//     //         writeln!(file2, ">seq5 ka:f:1000").expect("Failed to write header");
-//     //         writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
-//     //     }
+        let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let header = record[0].to_string(); // Now reading the header instead of the sequence ID
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((header, color, abundance));
+        }
         
-//     //     let k = 31;
-//     //     let m = 15;
-//     //     let bf_size = 1024 * 1024;
-//     //     let partition_number = 4;
-//     //     let color_number = 2;
-//     //     let abundance_number = 256; 
-//     //     let abundance_max = 65535;
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
     
-//     //     let (_file_paths, index_dir) = main_index_construction(
-//     //         vec![file1_path.clone(), file2_path.clone()],
-//     //         k,
-//     //         m,
-//     //         bf_size,
-//     //         partition_number,
-//     //         color_number,
-//     //         abundance_number,
-//     //         abundance_max,
-//     //         Some(&test_dir),
-//     //     )
-//     //     .expect("Failed to build index");
+        let mut expected_results = vec![
+            (">seq1 ka:f:30".to_string(), 0, 29),
+            (">seq2 ka:f:30".to_string(), 0, 29),
+            (">seq3 ka:f:2".to_string(), 0, 2),  // Values with errors due to log conversion
+        ];
     
-//     //     let query_results_path = format!("{}/query_results.csv", index_dir);
+        results.sort();
+        expected_results.sort();
+
+
+
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+    
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+    }
+
+    #[test]
+    fn test_build_and_query_index_sparse() {
+        let test_dir = "test_files_bq1";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
+    
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
+    
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+        }
         
-//     //     query_bloom_filter(&file1_path, &index_dir, &query_results_path, false)
-//     //         .expect("Failed to query sequences");
+        {
+            let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
+            writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
+            writeln!(file1, ">seq2 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
+            writeln!(file1, ">seq3 ka:f:2").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
+        }
     
-//     //     let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
-//     //     let mut results: Vec<(String, usize, usize)> = Vec::new();
-//     //     for record in reader.records() {
-//     //         let record = record.expect("Failed to read record");
-//     //         let header = record[0].to_string(); // Now reading the header instead of the sequence ID
-//     //         let color: usize = record[1].parse().expect("Failed to parse color");
-//     //         let abundance: usize = record[2].parse().expect("Failed to parse abundance");
-//     //         results.push((header, color, abundance));
-//     //     }
+        {
+            let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
+            writeln!(file2, ">seq4 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG").expect("Failed to write sequence");
+            writeln!(file2, ">seq5 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
+        }
         
-//     //     assert!(
-//     //         !results.is_empty(),
-//     //         "Empty results"
-//     //     );
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024 * 1024;
+        let partition_number = 4;
+        let color_number = 2;
+        let abundance_number = 256; 
+        let abundance_max = 65535;
+        let dense_option = false;
+        let threshold = color_number;
     
-//     //     let mut expected_results = vec![
-//     //         (">seq1 ka:f:30".to_string(), 0, 29),
-//     //         (">seq2 ka:f:30".to_string(), 0, 29),
-//     //         (">seq3 ka:f:2".to_string(), 0, 2), 
-//     //         (">seq3 ka:f:2".to_string(), 1, 997),
-//     //     ];
-//     //     results.sort();
-//     //     expected_results.sort();
-//     //     for (expected, actual) in expected_results.iter().zip(results.iter()) {
-//     //         assert_eq!(
-//     //             expected, actual,
-//     //             "Mismatch: expected {:?}, got {:?}",
-//     //             expected, actual
-//     //         );
-//     //     }
+        let (_file_paths, index_dir) = build_index(
+            vec![file1_path.clone(), file2_path.clone()],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
     
-//     //     fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
-//     // }
+        let query_results_path = format!("{}/query_results.csv", index_dir);
+        
+        query_index(&file1_path, &index_dir, &query_results_path, false)
+            .expect("Failed to query sequences");
+    
+        let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let header = record[0].to_string(); // Now reading the header instead of the sequence ID
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((header, color, abundance));
+        }
+        
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
+    
+        let mut expected_results = vec![
+            (">seq1 ka:f:30".to_string(), 0, 29),
+            (">seq2 ka:f:30".to_string(), 0, 29),
+            (">seq3 ka:f:2".to_string(), 0, 2), 
+            (">seq3 ka:f:2".to_string(), 1, 997),
+        ];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+    
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+    }
+
+    #[test]
+    fn test_build_and_query_index_dense() {
+        let test_dir = "test_files_bq1d";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
+    
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
+    
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+        }
+        
+        {
+            let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
+            writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
+            writeln!(file1, ">seq2 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
+            writeln!(file1, ">seq3 ka:f:2").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
+        }
+    
+        {
+            let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
+            writeln!(file2, ">seq4 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG").expect("Failed to write sequence");
+            writeln!(file2, ">seq5 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
+        }
+        
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024 * 1024;
+        let partition_number = 4;
+        let color_number = 2;
+        let abundance_number = 256; 
+        let abundance_max = 65535;
+        let dense_option = true;
+        let threshold = color_number;
+    
+        let (_file_paths, index_dir) = build_index(
+            vec![file1_path.clone(), file2_path.clone()],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+    
+        let query_results_path = format!("{}/query_results.csv", index_dir);
+        
+        query_index(&file1_path, &index_dir, &query_results_path, false)
+            .expect("Failed to query sequences");
+    
+        let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let header = record[0].to_string(); // Now reading the header instead of the sequence ID
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((header, color, abundance));
+        }
+        
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
+    
+        let mut expected_results = vec![
+            (">seq1 ka:f:30".to_string(), 0, 29),
+            (">seq2 ka:f:30".to_string(), 0, 29),
+            (">seq3 ka:f:2".to_string(), 0, 2), 
+            (">seq3 ka:f:2".to_string(), 1, 997),
+        ];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+    
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+    }
     
 
-//     // TODO
-//     // #[test]
-//     // fn test_build_and_query_index_longseq_simple() {
-//     //     let test_dir = "test_files_bq_ls";
-//     //     fs::create_dir_all(test_dir).expect("Failed to create test directory");
+    #[test]
+    fn test_build_and_query_index_longseq_simple_sparse() {
+        let test_dir = "test_files_bq_ls";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
 
-//     //     let fof_path = format!("{}/fof.txt", test_dir);
-//     //     let file1_path = format!("{}/file1Q.fa", test_dir);
-//     //     let file2_path = format!("{}/file2Q.fa", test_dir);
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
 
-//     //     {
-//     //         let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
-//     //         writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
-//     //     }
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+        }
 
-//     //     {
-//     //         let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
-//     //         writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
-//     //         writeln!(file1, ">seq2 ka:f:10").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
-//     //     }
+        {
+            let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
+            writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
+            writeln!(file1, ">seq2 ka:f:10").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
+        }
 
-//     //     {
-//     //         let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
-//     //         writeln!(file2, ">seq3 ka:f:1000").expect("Failed to write header");
-//     //         writeln!(
-//     //             file2,
-//     //             "AAAAATGATAGTAGAAAAAAATTTTAAAAAAACACCCCTGG"
-//     //         )
-//     //         .expect("Failed to write sequence");
-//     //     }
+        {
+            let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
+            writeln!(file2, ">seq3 ka:f:1000").expect("Failed to write header");
+            writeln!(
+                file2,
+                "AAAAATGATAGTAGAAAAAAATTTTAAAAAAACACCCCTGG"
+            )
+            .expect("Failed to write sequence");
+        }
 
-//     //     let k = 31;
-//     //     let m = 15;
-//     //     let bf_size = 1024 * 1024;
-//     //     let partition_number = 4;
-//     //     let color_number = 2;
-//     //     let abundance_number = 256;
-//     //     let abundance_max = 65535;
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024 * 1024;
+        let partition_number = 4;
+        let color_number = 2;
+        let abundance_number = 256;
+        let abundance_max = 65535;
+        let dense_option = false;
+        let threshold = color_number;
 
-//     //     let (_file_paths, index_dir) = main_index_construction(
-//     //         vec![file1_path.clone(), file2_path.clone()],
-//     //         k,
-//     //         m,
-//     //         bf_size,
-//     //         partition_number,
-//     //         color_number,
-//     //         abundance_number,
-//     //         abundance_max,
-//     //         Some(&test_dir),
-//     //     )
-//     //     .expect("Failed to build index");
+        let (_file_paths, index_dir) = build_index(
+            vec![file1_path.clone(), file2_path.clone()],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
 
-//     //     let query_results_path = format!("{}/query_results.csv", index_dir);
+        let query_results_path = format!("{}/query_results.csv", index_dir);
 
-//     //     query_bloom_filter(&file2_path, &index_dir, &query_results_path, false)
-//     //         .expect("Failed to query sequences");
+        query_index(&file2_path, &index_dir, &query_results_path, false)
+            .expect("Failed to query sequences");
 
-//     //     // Validate the results written to the query results CSV file
-//     //     let mut reader =
-//     //         csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
-//     //     let mut results: Vec<(String, usize, usize)> = Vec::new();
-//     //     for record in reader.records() {
-//     //         let record = record.expect("Failed to read record");
-//     //         let header = record[0].to_string(); // Now reading the header instead of the sequence ID
-//     //         let color: usize = record[1].parse().expect("Failed to parse color");
-//     //         let abundance: usize = record[2].parse().expect("Failed to parse abundance");
-//     //         results.push((header, color, abundance));
-//     //     }
+        // Validate the results written to the query results CSV file
+        let mut reader =
+            csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let header = record[0].to_string(); // Now reading the header instead of the sequence ID
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((header, color, abundance));
+        }
 
-//     //     assert!(!results.is_empty(), "Empty results");
+        assert!(!results.is_empty(), "Empty results");
 
-//     //     let mut expected_results = vec![(">seq3 ka:f:1000".to_string(), 1, 997)];
-//     //     results.sort();
-//     //     expected_results.sort();
-//     //     for (expected, actual) in expected_results.iter().zip(results.iter()) {
-//     //         assert_eq!(
-//     //             expected, actual,
-//     //             "Mismatch: expected {:?}, got {:?}",
-//     //             expected, actual
-//     //         );
-//     //     }
+        let mut expected_results = vec![(">seq3 ka:f:1000".to_string(), 1, 997)];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
 
-//     //     fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
-//     // }
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+    }
+
+    #[test]
+    fn test_build_and_query_index_longseq_simple_dense() {
+        let test_dir = "test_files_bq_lsd";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
+
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
+
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+        }
+
+        {
+            let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
+            writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
+            writeln!(file1, ">seq2 ka:f:10").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
+        }
+
+        {
+            let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
+            writeln!(file2, ">seq3 ka:f:1000").expect("Failed to write header");
+            writeln!(
+                file2,
+                "AAAAATGATAGTAGAAAAAAATTTTAAAAAAACACCCCTGG"
+            )
+            .expect("Failed to write sequence");
+        }
+
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024 * 1024;
+        let partition_number = 4;
+        let color_number = 2;
+        let abundance_number = 256;
+        let abundance_max = 65535;
+        let dense_option = true;
+        let threshold = color_number;
+
+        let (_file_paths, index_dir) = build_index(
+            vec![file1_path.clone(), file2_path.clone()],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+
+        let query_results_path = format!("{}/query_results.csv", index_dir);
+
+        query_index(&file2_path, &index_dir, &query_results_path, false)
+            .expect("Failed to query sequences");
+
+        // Validate the results written to the query results CSV file
+        let mut reader =
+            csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let header = record[0].to_string(); // Now reading the header instead of the sequence ID
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((header, color, abundance));
+        }
+
+        assert!(!results.is_empty(), "Empty results");
+
+        let mut expected_results = vec![(">seq3 ka:f:1000".to_string(), 1, 997)];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+    }
 
 
-//     // TODO
-//     // #[test]
-//     // fn test_build_and_query_index2() {
-//     //     use std::io::Write;
+    #[test]
+    fn test_build_and_query_index2_sparse() {
+        use std::io::Write;
 
-//     //     let test_dir = "test_files_bq2";
-//     //     fs::create_dir_all(test_dir).expect("Failed to create test directory");
+        let test_dir = "test_files_bq2";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
 
-//     //     let fof_path = format!("{}/fof.txt", test_dir);
-//     //     let file1_path = format!("{}/file1Q.fa", test_dir);
-//     //     let file2_path = format!("{}/file2Q.fa", test_dir);
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
 
-//     //     {
-//     //         let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
-//     //         writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
-//     //     }
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+        }
     
-//     //     {
-//     //         let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
-//     //         writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
-//     //         writeln!(file1, ">seq2 ka:f:30").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
-//     //         writeln!(file1, ">seq3 ka:f:2").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
-//     //     }
+        {
+            let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
+            writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
+            writeln!(file1, ">seq2 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
+            writeln!(file1, ">seq3 ka:f:2").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
+        }
 
-//     //     {
-//     //         let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
-//     //         writeln!(file2, ">seq4 ka:f:1000").expect("Failed to write header");
-//     //         writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG").expect("Failed to write sequence");
-//     //         writeln!(file2, ">seq5 ka:f:1000").expect("Failed to write header");
-//     //         writeln!(file2, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG").expect("Failed to write sequence");
-//     //     }
+        {
+            let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
+            writeln!(file2, ">seq4 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG").expect("Failed to write sequence");
+            writeln!(file2, ">seq5 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG").expect("Failed to write sequence");
+        }
      
-//     //     let k = 31;
-//     //     let m = 15;
-//     //     let bf_size = 1024 * 1024;
-//     //     let partition_number = 4;
-//     //     let color_number = 2;
-//     //     let abundance_number = 256; 
-//     //     let abundance_max = 65535;
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024 * 1024;
+        let partition_number = 4;
+        let color_number = 2;
+        let abundance_number = 255; 
+        let abundance_max = 65535;
+        let dense_option = false;
+        let threshold = 1;
 
        
 
-//     //     let (_file_paths, index_dir) = main_index_construction(
-//     //         vec![file1_path.clone(), file2_path.clone()],
-//     //         k,
-//     //         m,
-//     //         bf_size,
-//     //         partition_number,
-//     //         color_number,
-//     //         abundance_number,
-//     //         abundance_max,
-//     //         Some(&test_dir),
-//     //     )
-//     //     .expect("Failed to build index");
+        let (_file_paths, index_dir) = build_index(
+            vec![file1_path.clone(), file2_path.clone()],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
      
-//     //     /*
-//     //     fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p0.txt", "test_files_bq2/partitioned_bloom_filters_p0.txt");
-//     //     fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p1.txt", "test_files_bq2/partitioned_bloom_filters_p1.txt");
-//     //     fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p2.txt", "test_files_bq2/partitioned_bloom_filters_p2.txt");
-//     //     fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p3.txt", "test_files_bq2/partitioned_bloom_filters_p3.txt");
-//     //     */
-//     //     let query_results_path = format!("{}/query_results.csv", index_dir);
-//     //     query_bloom_filter(&file2_path, &test_dir, &query_results_path, false) // query sequences from file1
-//     //         .expect("Failed to query sequences");
+        /*
+        fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p0.txt", "test_files_bq2/partitioned_bloom_filters_p0.txt");
+        fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p1.txt", "test_files_bq2/partitioned_bloom_filters_p1.txt");
+        fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p2.txt", "test_files_bq2/partitioned_bloom_filters_p2.txt");
+        fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p3.txt", "test_files_bq2/partitioned_bloom_filters_p3.txt");
+        */
+        let query_results_path = format!("{}/query_results.csv", index_dir);
+        query_index(&file2_path, &test_dir, &query_results_path, false) // query sequences from file1
+            .expect("Failed to query sequences");
 
         
-//     //     let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+        let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
 
-//     //     let mut results: Vec<(String, usize, usize)> = Vec::new();
-//     //     for record in reader.records() {
-//     //         let record = record.expect("Failed to read record");
-//     //         let seq_id = record[0].to_string();
-//     //         let color: usize = record[1].parse().expect("Failed to parse color");
-//     //         let abundance: usize = record[2].parse().expect("Failed to parse abundance");
-//     //         results.push((seq_id, color, abundance));
-//     //     }
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let seq_id = record[0].to_string();
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((seq_id, color, abundance));
+        }
 
-//     //     assert!(
-//     //         !results.is_empty(),
-//     //         "Empty results"
-//     //     );
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
 
-//     //     let mut expected_results = vec![
-//     //         (">seq4 ka:f:1000".to_string(), 1, 997),
-//     //         (">seq5 ka:f:1000".to_string(), 1, 997),
-//     //     ];
-//     //     results.sort();
-//     //     expected_results.sort();
-//     //     for (expected, actual) in expected_results.iter().zip(results.iter()) {
-//     //         assert_eq!(
-//     //             expected, actual,
-//     //             "Mismatch: expected {:?}, got {:?}",
-//     //             expected, actual
-//     //         );
-//     //     }
-//     //     fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
-//     // }
+        let mut expected_results = vec![
+            (">seq4 ka:f:1000".to_string(), 1, 979),
+            (">seq5 ka:f:1000".to_string(), 1, 979),
+        ];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+    }
 
-//     // TODO
-//     // #[test]
-//     // fn test_build_and_query_index_sharedk() {
+    #[test]
+    fn test_build_and_query_index2_dense() {
+        use std::io::Write;
 
-//     //     let test_dir = "test_files_bq3";
-//     //     fs::create_dir_all(test_dir).expect("Failed to create test directory");
+        let test_dir = "test_files_bq2d";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
 
-//     //     let fof_path = format!("{}/fof.txt", test_dir);
-//     //     let file1_path = format!("{}/file1Q.fa", test_dir);
-//     //     let file2_path = format!("{}/file2Q.fa", test_dir);
-//     //     {
-//     //         let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
-//     //         writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
-//     //     }
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
 
-//     //     {
-//     //         let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
-//     //         writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
-//     //         writeln!(file1, ">seq2 ka:f:30").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
-//     //         writeln!(file1, ">seq3 ka:f:1500").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
-//     //     }
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+        }
+    
+        {
+            let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
+            writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
+            writeln!(file1, ">seq2 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
+            writeln!(file1, ">seq3 ka:f:2").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
+        }
 
-//     //     {
-//     //         let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
-//     //         writeln!(file2, ">seq4 ka:f:1000").expect("Failed to write header");
-//     //         writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG").expect("Failed to write sequence");
-//     //         writeln!(file2, ">seq5 ka:f:1000").expect("Failed to write header");
-//     //         writeln!(file2, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG").expect("Failed to write sequence");
-//     //         writeln!(file2, ">seq6 ka:f:4").expect("Failed to write header");
-//     //         writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
-//     //     }
+        {
+            let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
+            writeln!(file2, ">seq4 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG").expect("Failed to write sequence");
+            writeln!(file2, ">seq5 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG").expect("Failed to write sequence");
+        }
+     
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024 * 1024;
+        let partition_number = 4;
+        let color_number = 2;
+        let abundance_number = 255; 
+        let abundance_max = 65535;
+        let dense_option = true;
+        let threshold = 1;
+
+       
+
+        let (_file_paths, index_dir) = build_index(
+            vec![file1_path.clone(), file2_path.clone()],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+     
+        /*
+        fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p0.txt", "test_files_bq2/partitioned_bloom_filters_p0.txt");
+        fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p1.txt", "test_files_bq2/partitioned_bloom_filters_p1.txt");
+        fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p2.txt", "test_files_bq2/partitioned_bloom_filters_p2.txt");
+        fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p3.txt", "test_files_bq2/partitioned_bloom_filters_p3.txt");
+        */
+        let query_results_path = format!("{}/query_results.csv", index_dir);
+        query_index(&file2_path, &test_dir, &query_results_path, false) // query sequences from file1
+            .expect("Failed to query sequences");
+
         
-//     //     let k = 31;
-//     //     let m = 15;
-//     //     let bf_size = 1024 * 1024;
-//     //     let partition_number = 4;
-//     //     let color_number = 2;
-//     //     let abundance_number = 256; 
-//     //     let abundance_max = 256;
+        let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
 
-//     //     let (_file_paths, index_dir) = main_index_construction(
-//     //         vec![file1_path.clone(), file2_path.clone()],
-//     //         k,
-//     //         m,
-//     //         bf_size,
-//     //         partition_number,
-//     //         color_number,
-//     //         abundance_number,
-//     //         abundance_max,
-//     //         Some(&test_dir),
-//     //     )
-//     //     .expect("Failed to build index");
-//     //     /*
-//     //     fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p0.txt", "test_files_bq3/partitioned_bloom_filters_p0.txt");
-//     //     fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p1.txt", "test_files_bq3/partitioned_bloom_filters_p1.txt");
-//     //     fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p2.txt", "test_files_bq3/partitioned_bloom_filters_p2.txt");
-//     //     fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
-//     //     */
-//     //     let query_results_path = format!("{}/query_results.csv", index_dir);
-//     //     query_bloom_filter(&file1_path, &test_dir, &query_results_path, false) // query sequences from file1
-//     //         .expect("Failed to query sequences");
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let seq_id = record[0].to_string();
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((seq_id, color, abundance));
+        }
+
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
+
+        let mut expected_results = vec![
+            (">seq4 ka:f:1000".to_string(), 1, 979),
+            (">seq5 ka:f:1000".to_string(), 1, 979),
+        ];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+    }
+
+
+    #[test]
+    fn test_build_and_query_index_sharedk_sparse() {
+
+        let test_dir = "test_files_bq3";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
+
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+        }
+
+        {
+            let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
+            writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
+            writeln!(file1, ">seq2 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
+            writeln!(file1, ">seq3 ka:f:1500").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
+        }
+
+        {
+            let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
+            writeln!(file2, ">seq4 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG").expect("Failed to write sequence");
+            writeln!(file2, ">seq5 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG").expect("Failed to write sequence");
+            writeln!(file2, ">seq6 ka:f:4").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
+        }
+        
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024 * 1024;
+        let partition_number = 4;
+        let color_number = 2;
+        let abundance_number = 255; 
+        let abundance_max = 255;
+        let dense_option = false;
+        let threshold = color_number;
+
+
+        let (_file_paths, index_dir) = build_index(
+            vec![file1_path.clone(), file2_path.clone()],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+        /*
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p0.txt", "test_files_bq3/partitioned_bloom_filters_p0.txt");
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p1.txt", "test_files_bq3/partitioned_bloom_filters_p1.txt");
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p2.txt", "test_files_bq3/partitioned_bloom_filters_p2.txt");
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
+        */
+        let query_results_path = format!("{}/query_results.csv", index_dir);
+        query_index(&file1_path, &test_dir, &query_results_path, false) // query sequences from file1
+            .expect("Failed to query sequences");
 
         
-//     //     let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+        let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
 
-//     //     let mut results: Vec<(String, usize, usize)> = Vec::new();
-//     //     for record in reader.records() {
-//     //         let record = record.expect("Failed to read record");
-//     //         let seq_id = record[0].to_string();
-//     //         let color: usize = record[1].parse().expect("Failed to parse color");
-//     //         let abundance: usize = record[2].parse().expect("Failed to parse abundance");
-//     //         results.push((seq_id, color, abundance));
-//     //     }
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let seq_id = record[0].to_string();
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((seq_id, color, abundance));
+        }
 
-//     //     assert!(
-//     //         !results.is_empty(),
-//     //         "Empty results"
-//     //     );
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
         
-//     //     let mut expected_results = vec![
-//     //         (">seq1 ka:f:30".to_string(), 0, 30),
-//     //         (">seq2 ka:f:30".to_string(), 0, 30),
-//     //         (">seq3 ka:f:1500".to_string(), 0, 256), //because of abundance_max
-//     //         (">seq3 ka:f:1500".to_string(), 1, 4),
-//     //     ];
-//     //     results.sort();
-//     //     expected_results.sort();
-//     //     for (expected, actual) in expected_results.iter().zip(results.iter()) {
-//     //         assert_eq!(
-//     //             expected, actual,
-//     //             "Mismatch: expected {:?}, got {:?}",
-//     //             expected, actual
-//     //         );
-//     //     }
-//     //     fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+        let mut expected_results = vec![
+            (">seq1 ka:f:30".to_string(), 0, 30),
+            (">seq2 ka:f:30".to_string(), 0, 30),
+            (">seq3 ka:f:1500".to_string(), 0, 255), //because of abundance_max
+            (">seq3 ka:f:1500".to_string(), 1, 4),
+        ];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
             
-//     // }
+    }
 
-//     // #[test]
-//     // fn test_build_and_query_index_long() {
+    #[test]
+    fn test_build_and_query_index_sharedk_dense() {
 
-//     //     let test_dir = "test_files_bql";
-//     //     fs::create_dir_all(test_dir).expect("Failed to create test directory");
+        let test_dir = "test_files_bq3d";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
 
-//     //     let fof_path = format!("{}/fof.txt", test_dir);
-//     //     let file1_path = format!("{}/file1Q.fa", test_dir);
-//     //     let file2_path = format!("{}/file2Q.fa", test_dir);
-//     //     {
-//     //         let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
-//     //         writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
-//     //     }
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+        }
 
-//     //     {
-//     //         let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
-//     //         writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
-//     //         //writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCAGAGGAT").expect("Failed to write sequence");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCAGAG").expect("Failed to write sequence");
-//     //         writeln!(file1, ">seq2 ka:f:8").expect("Failed to write header");
-//     //         writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
-//     //     }
+        {
+            let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
+            writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
+            writeln!(file1, ">seq2 ka:f:30").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
+            writeln!(file1, ">seq3 ka:f:1500").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
+        }
 
-//     //     {
-//     //         let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
-//     //         writeln!(file2, ">seq4 ka:f:1000").expect("Failed to write header");
-//     //         writeln!(file2, "CAAAAAAAAAAAAAAAAAAAAACACCCCTGGAC").expect("Failed to write sequence");
-//     //     }
+        {
+            let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
+            writeln!(file2, ">seq4 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG").expect("Failed to write sequence");
+            writeln!(file2, ">seq5 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG").expect("Failed to write sequence");
+            writeln!(file2, ">seq6 ka:f:4").expect("Failed to write header");
+            writeln!(file2, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA").expect("Failed to write sequence");
+        }
         
-//     //     let k = 31;
-//     //     let m = 15;
-//     //     let bf_size = 1024 * 1024;
-//     //     let partition_number = 4;
-//     //     let color_number = 2;
-//     //     let abundance_number = 256; 
-//     //     let abundance_max = 65535;
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024 * 1024;
+        let partition_number = 4;
+        let color_number = 2;
+        let abundance_number = 255; 
+        let abundance_max = 255;
+        let dense_option = true;
+        let threshold = color_number;
 
-//     //     let (_file_paths, index_dir) = main_index_construction(
-//     //         vec![file1_path.clone(), file2_path.clone()],
-//     //         k,
-//     //         m,
-//     //         bf_size,
-//     //         partition_number,
-//     //         color_number,
-//     //         abundance_number,
-//     //         abundance_max,
-//     //         Some(&test_dir),
-//     //     )
-//     //     .expect("Failed to build index");
-//     //     /*
-//     //     fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p0.txt", "test_files_bq3/partitioned_bloom_filters_p0.txt");
-//     //     fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p1.txt", "test_files_bq3/partitioned_bloom_filters_p1.txt");
-//     //     fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p2.txt", "test_files_bq3/partitioned_bloom_filters_p2.txt");
-//     //     fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
-//     //     */
-//     //     let query_results_path = format!("{}/query_results.csv", index_dir);
-//     //     query_bloom_filter(&file1_path, &test_dir, &query_results_path, false) // query sequences from file1
-//     //         .expect("Failed to query sequences");
 
-       
-//     //     let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+        let (_file_paths, index_dir) = build_index(
+            vec![file1_path.clone(), file2_path.clone()],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+        /*
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p0.txt", "test_files_bq3/partitioned_bloom_filters_p0.txt");
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p1.txt", "test_files_bq3/partitioned_bloom_filters_p1.txt");
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p2.txt", "test_files_bq3/partitioned_bloom_filters_p2.txt");
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
+        */
+        let query_results_path = format!("{}/query_results.csv", index_dir);
+        query_index(&file1_path, &test_dir, &query_results_path, false) // query sequences from file1
+            .expect("Failed to query sequences");
 
-//     //     let mut results: Vec<(String, usize, usize)> = Vec::new();
-//     //     for record in reader.records() {
-//     //         let record = record.expect("Failed to read record");
-//     //         let seq_id = record[0].to_string();
-//     //         let color: usize = record[1].parse().expect("Failed to parse color");
-//     //         let abundance: usize = record[2].parse().expect("Failed to parse abundance");
-//     //         results.push((seq_id, color, abundance));
-//     //     }
-
-//     //     assert!(
-//     //         !results.is_empty(),
-//     //         "Empty results"
-//     //     );
         
-//     //     let mut expected_results = vec![
-//     //         (">seq1 ka:f:30".to_string(), 0, 29),
-//     //         (">seq2 ka:f:8".to_string(), 0, 8),
-//     //     ];
-//     //     results.sort();
-//     //     expected_results.sort();
-//     //     for (expected, actual) in expected_results.iter().zip(results.iter()) {
-//     //         assert_eq!(
-//     //             expected, actual,
-//     //             "Mismatch: expected {:?}, got {:?}",
-//     //             expected, actual
-//     //         );
-//     //     }
-//     //     fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+        let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let seq_id = record[0].to_string();
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((seq_id, color, abundance));
+        }
+
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
+        
+        let mut expected_results = vec![
+            (">seq1 ka:f:30".to_string(), 0, 30),
+            (">seq2 ka:f:30".to_string(), 0, 30),
+            (">seq3 ka:f:1500".to_string(), 0, 255), //because of abundance_max
+            (">seq3 ka:f:1500".to_string(), 1, 4),
+        ];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
             
-//     // }
+    }
 
-//     //#[ignore]
-//     #[test]
-//     fn test_insert_and_query_kmer_with_verifications() {
-//         use roaring::RoaringBitmap;
-    
-//         let kmer_hash: u64 = 42; 
-//         let minimizer: u64 = 7; 
-//         let partition_number = 4;
-//         let bf_size = 1024; 
-//         let partitioned_bf_size = bf_size as usize / partition_number;
-//         let color_number = 3;
-//         let path_color_number = 0;
-//         let abundance_number = 2;
-//         let log_abundance = 1;
-    
-//         let mut bloom_filters: Vec<RoaringBitmap> = vec![RoaringBitmap::new(); partition_number];
-    
-//         let partition_index_insert = (minimizer % (partition_number as u64)) as usize;
-//         let position_to_write = compute_location_filter(
-//             kmer_hash,
-//             partitioned_bf_size,
-//             color_number,
-//             path_color_number,
-//             abundance_number,
-//             log_abundance,
-//         );
-//         bloom_filters[partition_index_insert].insert(position_to_write as u32);
-    
-//         let nt_hash_iterator = vec![kmer_hash].into_iter();
-//         let min_iter = vec![(minimizer, 0)].into_iter();
-    
-//         let mut color_abundances = vec![Vec::new(); color_number];
-//         for (kmer_hash, (minimizer, _position)) in nt_hash_iterator.zip(min_iter) {
-//             let partition_index_query = (minimizer % (partition_number as u64)) as usize;
-    
-//             assert_eq!(
-//                 partition_index_insert, partition_index_query,
-//                 "Partition index mismatch: insert = {}, query = {}",
-//                 partition_index_insert, partition_index_query
-//             );
-    
-//             let bitmap = &bloom_filters[partition_index_query];
-    
-//             let base_position = compute_base_position(
-//                 kmer_hash,
-//                 partitioned_bf_size,
-//                 color_number,
-//                 abundance_number,
-//             );
-    
-//             // I add + log_abund because base_position does not have this info and just finds approximately the value
-//             assert_eq!(
-//                 position_to_write, base_position+(log_abundance as u64),
-//                 "Position mismatch: insert = {}, query = {}",
-//                 position_to_write, base_position+(log_abundance as u64)
-//             );
-    
-//             update_color_abundances(
-//                 bitmap,
-//                 base_position,
-//                 color_number,
-//                 abundance_number,
-//                 &mut color_abundances,
-//             );
-//         }
-    
-//         let results: Vec<(usize, usize)> = color_abundances
-//             .into_iter()
-//             .enumerate()
-//             .filter_map(|(color, abundances)| {
-//                 let min_abundance = abundances.into_iter().min();
-//                 min_abundance.map(|abundance| (color, abundance))
-//             })
-//             .collect();
-    
-//         let expected_results = vec![(0, log_abundance as usize),(1,0),(2,0)]; // expect color 0 with abundance level 1
-    
-//         assert_eq!(
-//             results, expected_results,
-//             "Mismatch in query results: expected {:?}, got {:?}",
-//             expected_results, results
-//         );
-//     }
+    #[test]
+    fn test_build_and_query_index_long_sparse() {
 
+        let test_dir = "test_files_bql";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
 
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+        }
 
-//     //#[ignore]
-//     // #[test]
-//     // fn test_split_fof_1() -> std::io::Result<()> {
-//     //     use std::fs::{self, File};
-//     //     use std::io::{BufReader, BufRead, Write};
+        {
+            let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
+            writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
+            //writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCAGAGGAT").expect("Failed to write sequence");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCAGAG").expect("Failed to write sequence");
+            writeln!(file1, ">seq2 ka:f:8").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
+        }
 
-//     //     let test_dir = "test_files_fofs1";
-//     //     fs::create_dir_all(test_dir).expect("Failed to create test directory");
-
-//     //     let fof_path = format!("{}/fof_split.txt", test_dir);
-
-//     //     {
-//     //         let mut fof_file = File::create(&fof_path).expect("Failed to create test FOF file");
-//     //         writeln!(fof_file, "/path/to/file1.fasta").expect("Failed to write to FOF file");
-//     //         writeln!(fof_file, "/path/to/file2.fasta").expect("Failed to write to FOF file");
-//     //         writeln!(fof_file, "/path/to/file3.fasta").expect("Failed to write to FOF file");
-//     //         writeln!(fof_file, "/path/to/file4.fasta").expect("Failed to write to FOF file");
-//     //         writeln!(fof_file, "/path/to/file5.fasta").expect("Failed to write to FOF file");
-//     //     }
-
-//     //     let file = File::open(&fof_path)?;
-//     //     let reader = BufReader::new(file);
-//     //     let lines: Vec<String> = reader.lines().collect::<Result<_, _>>()?;
-
-//     //     let result = split_fof(&lines);
-
-//     //     assert!(result.is_ok(), "split_fof returned an error");
-
-//     //     let (fof_chunks, _) = result.unwrap();
-
-
-
-//     //     let expected_chunks =
-//     //         vec![vec![
-//     //             "/path/to/file1.fasta".to_string(),
-//     //             "/path/to/file2.fasta".to_string(),]
-//     //             ,vec![
-//     //             "/path/to/file3.fasta".to_string(),
-//     //             "/path/to/file4.fasta".to_string(),]
-//     //             ,vec![
-//     //             "/path/to/file5.fasta".to_string(),]
-//     //         ];
-
-//     //     assert_eq!(
-//     //         fof_chunks, expected_chunks,
-//     //         "Mismatch in chunk distribution: expected {:?}, got {:?}",
-//     //         expected_chunks, fof_chunks
-//     //     );
-
-//     //     fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
-
-//     //     Ok(())
+        {
+            let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
+            writeln!(file2, ">seq4 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "CAAAAAAAAAAAAAAAAAAAAACACCCCTGGAC").expect("Failed to write sequence");
+        }
         
-//     // }
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024 * 1024;
+        let partition_number = 4;
+        let color_number = 2;
+        let abundance_number = 255; 
+        let abundance_max = 65535;
+        let dense_option = false;
+        let threshold = color_number;
 
-// /*
-//     #[test]
-//     fn test_merge_bloom_filters() {
-//         use roaring::RoaringBitmap;
-
-//         // initialize bf1: represents 2 datasets, abundance_number = 3, partitioned_bf_size = 2
-//         let mut bf1 = RoaringBitmap::new();  //110001,000000
-//         bf1.insert(0); // 1st dataset, 1st abundance level
-//         bf1.insert(1); // 1st dataset, 2nd abundance level
-//         bf1.insert(5); // 2nd dataset, 1st abundance level
-
-//         // initialize bf2: represents 1 dataset, abundance_number = 3
-//         let mut bf2 = RoaringBitmap::new(); // 111,000
-//         bf2.insert(0); // 1st dataset, 1st abundance level
-//         bf2.insert(1); // 1st dataset, 2nd abundance level
-//         bf2.insert(2); // 1st dataset, 3rd abundance level
-
-//         let partitioned_bf_size = 2;
-//         let merged_color_number = 2; // bf1 has 2 colors (datasets)
-//         let new_color_number = 1;    // bf2 has 1 color (dataset)
-//         let abundance_number = 3;
-
-//         let (merged_bf, color_nb_merge_final) =
-//             merge_bloom_filters(&bf1, &bf2, partitioned_bf_size, merged_color_number, new_color_number, abundance_number);
-
-//         let mut expected_bf = RoaringBitmap::new();
-//         //  first column: 110001 + 111 -> 110001111
-//         expected_bf.insert(0);
-//         expected_bf.insert(1);
-//         expected_bf.insert(5);
-//         expected_bf.insert(6);
-//         expected_bf.insert(7);
-//         expected_bf.insert(8);
-//         // second column: 000000 + 000 -> 000000000
-        
-
-//         let expected_color_nb_merge_final = 3; // 2 (from bf1) + 1 (from bf2)
-//         assert_eq!(
-//             color_nb_merge_final, expected_color_nb_merge_final,
-//             "Final color number does not match the expected result"
-//         );
-//         assert_eq!(
-//             merged_bf, expected_bf,
-//             "Merged bitmap does not match the expected result"
-//         );
-        
-//     }
-// */
-
-//     // TODO
-//     // //#[ignore]
-//     // #[test]
-//     // fn test_build_and_query_index_with_chunks_and_merge() {
-//     //     let test_dir = "test_files_bq_merge";
-//     //     fs::create_dir_all(test_dir).expect("Failed to create test directory");
-
-//     //     let fof_path = format!("{}/fof.txt", test_dir);
-//     //     let file1_path = format!("{}/file1Q.fa", test_dir);
-//     //     let file2_path = format!("{}/file2Q.fa", test_dir);
-//     //     let file3_path = format!("{}/file3Q.fa", test_dir);
-//     //     let file4_path = format!("{}/file4Q.fa", test_dir);
-//     //     let file5_path = format!("{}/file5Q.fa", test_dir);
-//     //     let file6_path = format!("{}/file6Q.fa", test_dir);
-//     //     let file7_path = format!("{}/file7Q.fa", test_dir);
-//     //     let file8_path = format!("{}/file8Q.fa", test_dir);
-
-//     //     {
-//     //         let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
-//     //         writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file3_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file4_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file5_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file6_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file7_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file8_path).expect("Failed to write to fof.txt");
-//     //     }
-
-//     //     for (file_path, (seq_id, ka_value, sequence)) in [
-//     //         (&file1_path, ("seq1", 30, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA")),
-//     //         (&file2_path, ("seq2", 12, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT")),
-//     //         (&file3_path, ("seq3", 1500, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
-//     //         (&file4_path, ("seq4", 1000, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")),
-//     //         (&file5_path, ("seq5", 450, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG")),
-//     //         (&file6_path, ("seq6", 4, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
-//     //         (&file7_path, ("seq7", 45110, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG")),
-//     //         (&file8_path, ("seq8", 75, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
-//     //     ] {
-//     //         let mut file = File::create(file_path).expect("Failed to create FASTA file");
-//     //         writeln!(file, ">{} ka:f:{}", seq_id, ka_value).expect("Failed to write header");
-//     //         writeln!(file, "{}", sequence).expect("Failed to write sequence");
-//     //     }
-
-//     //     let k = 31;
-//     //     let m = 15;
-//     //     let bf_size = 8;
-//     //     let partition_number = 2;
-//     //     //let color_number = 6; 
-//     //     let color_number = 8;
-//     //     let abundance_number = 256;
-//     //     let abundance_max = 65535;
-
-//     //     let (_file_paths, index_dir) = main_index_construction(
-//     //         vec![
-//     //             file1_path.clone(),
-//     //             file2_path.clone(),
-//     //             file3_path.clone(),
-//     //             file4_path.clone(),
-//     //             file5_path.clone(),
-//     //             file6_path.clone(),
-//     //             file7_path.clone(),
-//     //             file8_path.clone(),
-//     //         ],
-//     //         k,
-//     //         m,
-//     //         bf_size,
-//     //         partition_number,
-//     //         color_number,
-//     //         abundance_number,
-//     //         abundance_max,
-//     //         Some(&test_dir),
-//     //     )
-//     //     .expect("Failed to build index");
-//     //     let query_results_path = format!("{}/query_results.csv", index_dir);
-
-//     //     query_bloom_filter(&file1_path, &test_dir, &query_results_path, false)
-//     //         .expect("Failed to query sequences");
-
-//     //     let mut reader =
-//     //         csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
-
-//     //     let mut results: Vec<(String, usize, usize)> = Vec::new();
-//     //     for record in reader.records() {
-//     //         let record = record.expect("Failed to read record");
-//     //         let seq_id = record[0].to_string();
-//     //         let color: usize = record[1].parse().expect("Failed to parse color");
-//     //         let abundance: usize = record[2].parse().expect("Failed to parse abundance");
-//     //         results.push((seq_id, color, abundance));
-//     //     }
-
-//     //     assert!(
-//     //         !results.is_empty(),
-//     //         "Empty results"
-//     //     );
-//     //     let mut expected_results = vec![
-//     //         (">seq1 ka:f:30".to_string(), 0, 29),
-//     //     ];
-//     //     results.sort();
-//     //     expected_results.sort();
-//     //     for (expected, actual) in expected_results.iter().zip(results.iter()) {
-//     //         assert_eq!(
-//     //             expected, actual,
-//     //             "Mismatch: expected {:?}, got {:?}",
-//     //             expected, actual
-//     //         );
-//     //     }
-//     //     fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
-
-//     // }
-
-//     /*
-//     #[test]
-//     fn test_split_fof_large() -> std::io::Result<()> {
-//         use std::fs::{self, File};
-//         use std::io::{BufReader, BufRead, Write};
-    
-//         let test_dir = "test_files_fofs_large";
-//         fs::create_dir_all(test_dir).expect("Failed to create test directory");
-    
-//         let fof_path = format!("{}/fof.txt", test_dir);
-    
-//         // Generate 1100 file paths
-//         let mut file_paths: Vec<String> = Vec::new();
-//         for i in 1..=1100 {
-//             let file_path = format!("{}/file{}.fa", test_dir, i);
-//             file_paths.push(file_path);
-//         }
-    
-//         // Write all file paths to fof.txt
-//         {
-//             let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
-//             for file_path in &file_paths {
-//                 writeln!(fof_file, "{}", file_path).expect("Failed to write to fof.txt");
-//             }
-//         }
-    
-//         let file = File::open(&fof_path)?;
-//         let reader = BufReader::new(file);
-//         let lines: Vec<String> = reader.lines().collect::<Result<_, _>>()?;
-    
-//         let result = split_fof(&lines);
-    
-//         assert!(result.is_ok(), "split_fof returned an error");
-    
-//         let (fof_chunks, _) = result.unwrap();
-    
-//         // Create expected chunks
-//         let expected_chunks = vec![
-//             file_paths[0..1000].to_vec(),
-//             file_paths[1000..].to_vec(),
-//         ];
-    
-//         assert_eq!(
-//             fof_chunks, expected_chunks,
-//             "Mismatch in chunk distribution: expected {:?}, got {:?}",
-//             expected_chunks, fof_chunks
-//         );
-    
-//         fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
-    
-//         Ok(())
-//     }
-//     */
-
-
-//     // TODO
-//     // //#[ignore]
-//     // #[test]
-//     // fn test_build_and_query_index_with_chunks_and_merge2() {
-//     //     let test_dir = "test_files_bq_merge2";
-//     //     fs::create_dir_all(test_dir).expect("Failed to create test directory");
-
-//     //     let fof_path = format!("{}/fof.txt", test_dir);
-//     //     let file1_path = format!("{}/file1Q.fa", test_dir);
-//     //     let file2_path = format!("{}/file2Q.fa", test_dir);
-//     //     let file3_path = format!("{}/file3Q.fa", test_dir);
-//     //     let file4_path = format!("{}/file4Q.fa", test_dir);
-//     //     let file5_path = format!("{}/file5Q.fa", test_dir);
-//     //     let file6_path = format!("{}/file6Q.fa", test_dir);
-
-
-//     //     {
-//     //         let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
-//     //         writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file3_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file4_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file5_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file6_path).expect("Failed to write to fof.txt");
-
-//     //     }
-
-//     //     for (file_path, (seq_id, ka_value, sequence)) in [
-//     //         (&file1_path, ("seq1", 30, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA")),
-//     //         (&file2_path, ("seq2", 12, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT")),
-//     //         (&file3_path, ("seq3", 1500, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
-//     //         (&file4_path, ("seq4", 1000, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")),
-//     //         (&file5_path, ("seq5", 450, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG")),
-//     //         (&file6_path, ("seq6", 4, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
-
-//     //     ] {
-//     //         let mut file = File::create(file_path).expect("Failed to create FASTA file");
-//     //         writeln!(file, ">{} ka:f:{}", seq_id, ka_value).expect("Failed to write header");
-//     //         writeln!(file, "{}", sequence).expect("Failed to write sequence");
-//     //     }
-
-//     //     let k = 31;
-//     //     let m = 15;
-//     //     let bf_size = 8;
-//     //     let partition_number = 2;
-//     //     let color_number = 6; 
-//     //     let abundance_number = 256;
-//     //     let abundance_max = 65535;
-
-//     //     let (_file_paths, index_dir) = main_index_construction(
-//     //         vec![
-//     //             file1_path.clone(),
-//     //             file2_path.clone(),
-//     //             file3_path.clone(),
-//     //             file4_path.clone(),
-//     //             file5_path.clone(),
-//     //             file6_path.clone(),
-       
-//     //         ],
-//     //         k,
-//     //         m,
-//     //         bf_size,
-//     //         partition_number,
-//     //         color_number,
-//     //         abundance_number,
-//     //         abundance_max,
-//     //         Some(&test_dir),
-//     //     )
-//     //     .expect("Failed to build index");
-//     //     let query_results_path = format!("{}/query_results.csv", index_dir);
-//     //     query_bloom_filter(&file6_path, &test_dir, &query_results_path, false)
-//     //         .expect("Failed to query sequences");
+        let (_file_paths, index_dir) = build_index(
+            vec![file1_path.clone(), file2_path.clone()],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+        /*
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p0.txt", "test_files_bq3/partitioned_bloom_filters_p0.txt");
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p1.txt", "test_files_bq3/partitioned_bloom_filters_p1.txt");
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p2.txt", "test_files_bq3/partitioned_bloom_filters_p2.txt");
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
+        */
+        let query_results_path = format!("{}/query_results.csv", index_dir);
+        query_index(&file1_path, &test_dir, &query_results_path, false) // query sequences from file1
+            .expect("Failed to query sequences");
 
        
-//     //     let mut reader =
-//     //         csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+        let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
 
-//     //     let mut results: Vec<(String, usize, usize)> = Vec::new();
-//     //     for record in reader.records() {
-//     //         let record = record.expect("Failed to read record");
-//     //         let seq_id = record[0].to_string();
-//     //         let color: usize = record[1].parse().expect("Failed to parse color");
-//     //         let abundance: usize = record[2].parse().expect("Failed to parse abundance");
-//     //         results.push((seq_id, color, abundance));
-//     //     }
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let seq_id = record[0].to_string();
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((seq_id, color, abundance));
+        }
 
-//     //     assert!(
-//     //         !results.is_empty(),
-//     //         "Empty results"
-//     //     );
-//     //     let mut expected_results = vec![
-//     //         (">seq6 ka:f:4".to_string(), 2, 1450),
-//     //         (">seq6 ka:f:4".to_string(), 5, 4),
-//     //     ];
-//     //     results.sort();
-//     //     expected_results.sort();
-//     //     for (expected, actual) in expected_results.iter().zip(results.iter()) {
-//     //         assert_eq!(
-//     //             expected, actual,
-//     //             "Mismatch: expected {:?}, got {:?}",
-//     //             expected, actual
-//     //         );
-//     //     }
-//     //     fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
-
-//     // }
-
-
-//     // TODO
-//     // //#[ignore]
-//     // #[test]
-//     // fn test_build_and_query_index_with_chunks_and_merge3() {
-//     //     let test_dir = "test_files_bq_merge3";
-//     //     fs::create_dir_all(test_dir).expect("Failed to create test directory");
-
-//     //     let fof_path = format!("{}/fof.txt", test_dir);
-//     //     let file1_path = format!("{}/file1Q.fa", test_dir);
-//     //     let file2_path = format!("{}/file2Q.fa", test_dir);
-//     //     let file3_path = format!("{}/file3Q.fa", test_dir);
-//     //     let file4_path = format!("{}/file4Q.fa", test_dir);
-//     //     let file5_path = format!("{}/file5Q.fa", test_dir);
-//     //     let file6_path = format!("{}/file6Q.fa", test_dir);
-//     //     let file7_path = format!("{}/file7Q.fa", test_dir);
-//     //     let file8_path = format!("{}/file8Q.fa", test_dir);
-//     //     let file9_path = format!("{}/file9Q.fa", test_dir);
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
+        
+        let mut expected_results = vec![
+            (">seq1 ka:f:30".to_string(), 0, 29),
+            (">seq2 ka:f:8".to_string(), 0, 8),
+        ];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+            
+    }
 
 
-//     //     {
-//     //         let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
-//     //         writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file3_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file4_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file5_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file6_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file7_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file8_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file9_path).expect("Failed to write to fof.txt");
+    #[test]
+    fn test_build_and_query_index_long_dense() {
 
-//     //     }
+        let test_dir = "test_files_bqld";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
 
-//     //     for (file_path, (seq_id, ka_value, sequence)) in [
-//     //         (&file1_path, ("seq1", 30, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA")),
-//     //         (&file2_path, ("seq2", 12, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT")),
-//     //         (&file3_path, ("seq3", 1500, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
-//     //         (&file4_path, ("seq4", 1000, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")),
-//     //         (&file5_path, ("seq5", 60_000, "TAAAAAAAAAAAAAAAAAAAACACCCCTGGG")),
-//     //         (&file6_path, ("seq6", 4, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
-//     //         (&file7_path, ("seq7", 1000, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")),
-//     //         (&file8_path, ("seq8", 450, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG")),
-//     //         (&file9_path, ("seq9", 4, "GGGGAAAAAAAAAAAAAAAAAACAAAAAGAA")),
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+        }
 
-//     //     ] {
-//     //         let mut file = File::create(file_path).expect("Failed to create FASTA file");
-//     //         writeln!(file, ">{} ka:f:{}", seq_id, ka_value).expect("Failed to write header");
-//     //         writeln!(file, "{}", sequence).expect("Failed to write sequence");
-//     //     }
+        {
+            let mut file1 = File::create(&file1_path).expect("Failed to create file1.fasta");
+            writeln!(file1, ">seq1 ka:f:30").expect("Failed to write header");
+            //writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCAGAGGAT").expect("Failed to write sequence");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAAACACAGATCAGAG").expect("Failed to write sequence");
+            writeln!(file1, ">seq2 ka:f:8").expect("Failed to write header");
+            writeln!(file1, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT").expect("Failed to write sequence");
+        }
 
-//     //     let k = 31;
-//     //     let m = 15;
-//     //     let bf_size = 4;
-//     //     let partition_number = 2;
-//     //     let color_number = 9; 
-//     //     let abundance_number = 256;
-//     //     let abundance_max = 65535;
+        {
+            let mut file2 = File::create(&file2_path).expect("Failed to create file2.fasta");
+            writeln!(file2, ">seq4 ka:f:1000").expect("Failed to write header");
+            writeln!(file2, "CAAAAAAAAAAAAAAAAAAAAACACCCCTGGAC").expect("Failed to write sequence");
+        }
+        
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024 * 1024;
+        let partition_number = 4;
+        let color_number = 2;
+        let abundance_number = 255; 
+        let abundance_max = 65535;
+        let dense_option = true;
+        let threshold = color_number;
 
-//     //     let (_file_paths, index_dir) = main_index_construction(
-//     //         vec![
-//     //             file1_path.clone(),
-//     //             file2_path.clone(),
-//     //             file3_path.clone(),
-//     //             file4_path.clone(),
-//     //             file5_path.clone(),
-//     //             file6_path.clone(),
-//     //             file7_path.clone(),
-//     //             file8_path.clone(),
-//     //             file9_path.clone(),
+        let (_file_paths, index_dir) = build_index(
+            vec![file1_path.clone(), file2_path.clone()],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+        /*
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p0.txt", "test_files_bq3/partitioned_bloom_filters_p0.txt");
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p1.txt", "test_files_bq3/partitioned_bloom_filters_p1.txt");
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p2.txt", "test_files_bq3/partitioned_bloom_filters_p2.txt");
+        fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
+        */
+        let query_results_path = format!("{}/query_results.csv", index_dir);
+        query_index(&file1_path, &test_dir, &query_results_path, false) // query sequences from file1
+            .expect("Failed to query sequences");
+
        
-//     //         ],
-//     //         k,
-//     //         m,
-//     //         bf_size,
-//     //         partition_number,
-//     //         color_number,
-//     //         abundance_number,
-//     //         abundance_max,
-//     //         Some(&test_dir),
-//     //     )
-//     //     .expect("Failed to build index");
-//     //     let query_results_path = format!("{}/query_results.csv", index_dir);
+        let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
 
-//     //     query_bloom_filter(&file5_path, &test_dir, &query_results_path, false)
-//     //         .expect("Failed to query sequences");
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let seq_id = record[0].to_string();
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((seq_id, color, abundance));
+        }
 
-//     //     let mut reader =
-//     //         csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
-
-//     //     let mut results: Vec<(String, usize, usize)> = Vec::new();
-//     //     for record in reader.records() {
-//     //         let record = record.expect("Failed to read record");
-//     //         let seq_id = record[0].to_string();
-//     //         let color: usize = record[1].parse().expect("Failed to parse color");
-//     //         let abundance: usize = record[2].parse().expect("Failed to parse abundance");
-//     //         results.push((seq_id, color, abundance));
-//     //     }
-
-//     //     assert!(
-//     //         !results.is_empty(),
-//     //         "Empty results"
-//     //     );
-//     //     let mut expected_results = vec![
-//     //         (">seq5 ka:f:60000".to_string(), 4, 59176),
-//     //     ];
-//     //     results.sort();
-//     //     expected_results.sort();
-//     //     for (expected, actual) in expected_results.iter().zip(results.iter()) {
-//     //         assert_eq!(
-//     //             expected, actual,
-//     //             "Mismatch: expected {:?}, got {:?}",
-//     //             expected, actual
-//     //         );
-//     //     }
-
-
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
         
-//     //     fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+        let mut expected_results = vec![
+            (">seq1 ka:f:30".to_string(), 0, 29),
+            (">seq2 ka:f:8".to_string(), 0, 8),
+        ];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
 
-//     // }
+    }
+
+    #[ignore]
+    #[test]
+    fn test_insert_and_query_kmer_with_verifications() {
+        use roaring::RoaringBitmap;
+    
+        let kmer_hash: u64 = 42; 
+        let minimizer: u64 = 7; 
+        let partition_number = 4;
+        let bf_size = 1024; 
+        let partitioned_bf_size = bf_size as usize / partition_number;
+        let color_number = 3;
+        let path_color_number = 0;
+        let abundance_number = 2;
+        let log_abundance = 1;
+    
+        let mut bloom_filters: Vec<RoaringBitmap> = vec![RoaringBitmap::new(); partition_number];
+    
+        let partition_index_insert = (minimizer % (partition_number as u64)) as usize;
+        let position_to_write = compute_location_filter(
+            kmer_hash,
+            partitioned_bf_size,
+            color_number,
+            path_color_number,
+            abundance_number,
+            log_abundance,
+        );
+        bloom_filters[partition_index_insert].insert(position_to_write as u32);
+    
+        let nt_hash_iterator = vec![kmer_hash].into_iter();
+        let min_iter = vec![(minimizer, 0)].into_iter();
+    
+        let mut color_abundances = vec![Vec::new(); color_number];
+        for (kmer_hash, (minimizer, _position)) in nt_hash_iterator.zip(min_iter) {
+            let partition_index_query = (minimizer % (partition_number as u64)) as usize;
+    
+            assert_eq!(
+                partition_index_insert, partition_index_query,
+                "Partition index mismatch: insert = {}, query = {}",
+                partition_index_insert, partition_index_query
+            );
+    
+            let bitmap = &bloom_filters[partition_index_query];
+    
+            let base_position = compute_base_position(
+                kmer_hash,
+                partitioned_bf_size,
+                color_number,
+                abundance_number,
+            );
+    
+            // I add + log_abund because base_position does not have this info and just finds approximately the value
+            assert_eq!(
+                position_to_write, base_position+(log_abundance as u64),
+                "Position mismatch: insert = {}, query = {}",
+                position_to_write, base_position+(log_abundance as u64)
+            );
+    
+            update_color_abundances(
+                bitmap,
+                base_position,
+                color_number,
+                abundance_number,
+                &mut color_abundances,
+            );
+        }
+    
+        let results: Vec<(usize, usize)> = color_abundances
+            .into_iter()
+            .enumerate()
+            .filter_map(|(color, abundances)| {
+                let min_abundance = abundances.into_iter().min();
+                min_abundance.map(|abundance| (color, abundance))
+            })
+            .collect();
+    
+        let expected_results = vec![(0, log_abundance as usize),(1,0),(2,0)]; // expect color 0 with abundance level 1
+    
+        assert_eq!(
+            results, expected_results,
+            "Mismatch in query results: expected {:?}, got {:?}",
+            expected_results, results
+        );
+    }
 
 
 
-//     // // TODO
-//     // //#[ignore]
-//     // #[test]
-//     // fn test_build_and_query_index_with_chunks_and_merge4() {
-//     //     let test_dir = "test_files_bq_merge4";
-//     //     fs::create_dir_all(test_dir).expect("Failed to create test directory");
+    #[ignore]
+    #[test]
+    fn test_split_fof_1() -> std::io::Result<()> {
+        use std::fs::{self, File};
+        use std::io::{BufReader, BufRead, Write};
 
-//     //     let fof_path = format!("{}/fof.txt", test_dir);
-//     //     let file1_path = format!("{}/file1Q.fa", test_dir);
-//     //     let file2_path = format!("{}/file2Q.fa", test_dir);
-//     //     let file3_path = format!("{}/file3Q.fa", test_dir);
-//     //     let file4_path = format!("{}/file4Q.fa", test_dir);
-//     //     let file5_path = format!("{}/file5Q.fa", test_dir);
+        let test_dir = "test_files_fofs1";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
 
+        let fof_path = format!("{}/fof_split.txt", test_dir);
 
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create test FOF file");
+            writeln!(fof_file, "/path/to/file1.fasta").expect("Failed to write to FOF file");
+            writeln!(fof_file, "/path/to/file2.fasta").expect("Failed to write to FOF file");
+            writeln!(fof_file, "/path/to/file3.fasta").expect("Failed to write to FOF file");
+            writeln!(fof_file, "/path/to/file4.fasta").expect("Failed to write to FOF file");
+            writeln!(fof_file, "/path/to/file5.fasta").expect("Failed to write to FOF file");
+        }
 
-//     //     {
-//     //         let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
-//     //         writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file3_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file4_path).expect("Failed to write to fof.txt");
-//     //         writeln!(fof_file, "{}", file5_path).expect("Failed to write to fof.txt");
+        let file = File::open(&fof_path)?;
+        let reader = BufReader::new(file);
+        let lines: Vec<String> = reader.lines().collect::<Result<_, _>>()?;
 
-//     //     }
+        let result = split_fof(&lines);
 
-//     //     for (file_path, sequences) in [
-//     //     (
-//     //         &file1_path,
-//     //         vec![("seq1", 30, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA")],
-//     //     ),
-//     //     (
-//     //         &file2_path,
-//     //         vec![("seq2", 12, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT")],
-//     //     ),
-//     //     (
-//     //         &file3_path,
-//     //         vec![("seq3", 1500, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")],
-//     //     ),
-//     //     (
-//     //         &file4_path,
-//     //         vec![("seq4", 1000, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")],
-//     //     ),
-//     //     (
-//     //         &file5_path,
-//     //         vec![
-//     //             ("seq5", 60_000, "TAAAAAAAAAAAAAAAAAAAACACCCCTGGG"),
-//     //             ("seq6", 4, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA"),
-//     //         ],
-//     //     ),
-//     //     ] {
-//     //         let mut file = File::create(file_path).expect("Failed to create FASTA file");
-//     //         for (seq_id, ka_value, sequence) in sequences {
-//     //             writeln!(file, ">{} ka:f:{}", seq_id, ka_value).expect("Failed to write header");
-//     //             writeln!(file, "{}", sequence).expect("Failed to write sequence");
-//     //         }
-//     //     }
+        assert!(result.is_ok(), "split_fof returned an error");
+
+        let (fof_chunks, _) = result.unwrap();
 
 
-//     //     let k = 31;
-//     //     let m = 15;
-//     //     let bf_size = 256*256;
-//     //     let partition_number = 2;
-//     //     let color_number = 5; 
-//     //     let abundance_number = 256;
-//     //     let abundance_max = 65535;
 
-//     //     let (_file_paths, index_dir) = main_index_construction(
-//     //         vec![
-//     //             file1_path.clone(),
-//     //             file2_path.clone(),
-//     //             file3_path.clone(),
-//     //             file4_path.clone(),
-//     //             file5_path.clone(),
+        let expected_chunks =
+            vec![vec![
+                "/path/to/file1.fasta".to_string(),
+                "/path/to/file2.fasta".to_string(),]
+                ,vec![
+                "/path/to/file3.fasta".to_string(),
+                "/path/to/file4.fasta".to_string(),]
+                ,vec![
+                "/path/to/file5.fasta".to_string(),]
+            ];
+
+        assert_eq!(
+            fof_chunks, expected_chunks,
+            "Mismatch in chunk distribution: expected {:?}, got {:?}",
+            expected_chunks, fof_chunks
+        );
+
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+
+        Ok(())
+        
+    }
+
+/*
+    #[test]
+    fn test_merge_bloom_filters() {
+        use roaring::RoaringBitmap;
+
+        // initialize bf1: represents 2 datasets, abundance_number = 3, partitioned_bf_size = 2
+        let mut bf1 = RoaringBitmap::new();  //110001,000000
+        bf1.insert(0); // 1st dataset, 1st abundance level
+        bf1.insert(1); // 1st dataset, 2nd abundance level
+        bf1.insert(5); // 2nd dataset, 1st abundance level
+
+        // initialize bf2: represents 1 dataset, abundance_number = 3
+        let mut bf2 = RoaringBitmap::new(); // 111,000
+        bf2.insert(0); // 1st dataset, 1st abundance level
+        bf2.insert(1); // 1st dataset, 2nd abundance level
+        bf2.insert(2); // 1st dataset, 3rd abundance level
+
+        let partitioned_bf_size = 2;
+        let merged_color_number = 2; // bf1 has 2 colors (datasets)
+        let new_color_number = 1;    // bf2 has 1 color (dataset)
+        let abundance_number = 3;
+
+        let (merged_bf, color_nb_merge_final) =
+            merge_bloom_filters(&bf1, &bf2, partitioned_bf_size, merged_color_number, new_color_number, abundance_number);
+
+        let mut expected_bf = RoaringBitmap::new();
+        //  first column: 110001 + 111 -> 110001111
+        expected_bf.insert(0);
+        expected_bf.insert(1);
+        expected_bf.insert(5);
+        expected_bf.insert(6);
+        expected_bf.insert(7);
+        expected_bf.insert(8);
+        // second column: 000000 + 000 -> 000000000
+        
+
+        let expected_color_nb_merge_final = 3; // 2 (from bf1) + 1 (from bf2)
+        assert_eq!(
+            color_nb_merge_final, expected_color_nb_merge_final,
+            "Final color number does not match the expected result"
+        );
+        assert_eq!(
+            merged_bf, expected_bf,
+            "Merged bitmap does not match the expected result"
+        );
+        
+    }
+*/
+
+
+    //#[ignore]
+    #[test]
+    fn test_build_and_query_index_with_chunks_and_merge() {
+        let test_dir = "test_files_bq_merge";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
+
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
+        let file3_path = format!("{}/file3Q.fa", test_dir);
+        let file4_path = format!("{}/file4Q.fa", test_dir);
+        let file5_path = format!("{}/file5Q.fa", test_dir);
+        let file6_path = format!("{}/file6Q.fa", test_dir);
+        let file7_path = format!("{}/file7Q.fa", test_dir);
+        let file8_path = format!("{}/file8Q.fa", test_dir);
+
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file3_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file4_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file5_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file6_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file7_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file8_path).expect("Failed to write to fof.txt");
+        }
+
+        for (file_path, (seq_id, ka_value, sequence)) in [
+            (&file1_path, ("seq1", 30, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA")),
+            (&file2_path, ("seq2", 12, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT")),
+            (&file3_path, ("seq3", 1500, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
+            (&file4_path, ("seq4", 1000, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")),
+            (&file5_path, ("seq5", 450, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG")),
+            (&file6_path, ("seq6", 4, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
+            (&file7_path, ("seq7", 45110, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG")),
+            (&file8_path, ("seq8", 75, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
+        ] {
+            let mut file = File::create(file_path).expect("Failed to create FASTA file");
+            writeln!(file, ">{} ka:f:{}", seq_id, ka_value).expect("Failed to write header");
+            writeln!(file, "{}", sequence).expect("Failed to write sequence");
+        }
+
+        let k = 31;
+        let m = 15;
+        let bf_size = 8;
+        let partition_number = 2;
+        //let color_number = 6; 
+        let color_number = 8;
+        let abundance_number = 255;
+        let abundance_max = 65535;
+        let dense_option = false;
+        let threshold = color_number;
+
+        let (_file_paths, index_dir) = build_index(
+            vec![
+                file1_path.clone(),
+                file2_path.clone(),
+                file3_path.clone(),
+                file4_path.clone(),
+                file5_path.clone(),
+                file6_path.clone(),
+                file7_path.clone(),
+                file8_path.clone(),
+            ],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+        let query_results_path = format!("{}/query_results.csv", index_dir);
+
+        query_index(&file1_path, &test_dir, &query_results_path, false)
+            .expect("Failed to query sequences");
+
+        let mut reader =
+            csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let seq_id = record[0].to_string();
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((seq_id, color, abundance));
+        }
+
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
+        let mut expected_results = vec![
+            (">seq1 ka:f:30".to_string(), 0, 29),
+        ];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+
+    }
+
+    /*
+    #[test]
+    fn test_split_fof_large() -> std::io::Result<()> {
+        use std::fs::{self, File};
+        use std::io::{BufReader, BufRead, Write};
+    
+        let test_dir = "test_files_fofs_large";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
+    
+        let fof_path = format!("{}/fof.txt", test_dir);
+    
+        // Generate 1100 file paths
+        let mut file_paths: Vec<String> = Vec::new();
+        for i in 1..=1100 {
+            let file_path = format!("{}/file{}.fa", test_dir, i);
+            file_paths.push(file_path);
+        }
+    
+        // Write all file paths to fof.txt
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            for file_path in &file_paths {
+                writeln!(fof_file, "{}", file_path).expect("Failed to write to fof.txt");
+            }
+        }
+    
+        let file = File::open(&fof_path)?;
+        let reader = BufReader::new(file);
+        let lines: Vec<String> = reader.lines().collect::<Result<_, _>>()?;
+    
+        let result = split_fof(&lines);
+    
+        assert!(result.is_ok(), "split_fof returned an error");
+    
+        let (fof_chunks, _) = result.unwrap();
+    
+        // Create expected chunks
+        let expected_chunks = vec![
+            file_paths[0..1000].to_vec(),
+            file_paths[1000..].to_vec(),
+        ];
+    
+        assert_eq!(
+            fof_chunks, expected_chunks,
+            "Mismatch in chunk distribution: expected {:?}, got {:?}",
+            expected_chunks, fof_chunks
+        );
+    
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+    
+        Ok(())
+    }
+    */
+
+
+    //#[ignore]
+    #[test]
+    fn test_build_and_query_index_with_chunks_and_merge2() {
+        let test_dir = "test_files_bq_merge2";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
+
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
+        let file3_path = format!("{}/file3Q.fa", test_dir);
+        let file4_path = format!("{}/file4Q.fa", test_dir);
+        let file5_path = format!("{}/file5Q.fa", test_dir);
+        let file6_path = format!("{}/file6Q.fa", test_dir);
+
+
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file3_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file4_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file5_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file6_path).expect("Failed to write to fof.txt");
+
+        }
+
+        for (file_path, (seq_id, ka_value, sequence)) in [
+            (&file1_path, ("seq1", 30, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA")),
+            (&file2_path, ("seq2", 12, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT")),
+            (&file3_path, ("seq3", 1500, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
+            (&file4_path, ("seq4", 1000, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")),
+            (&file5_path, ("seq5", 450, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG")),
+            (&file6_path, ("seq6", 4, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
+
+        ] {
+            let mut file = File::create(file_path).expect("Failed to create FASTA file");
+            writeln!(file, ">{} ka:f:{}", seq_id, ka_value).expect("Failed to write header");
+            writeln!(file, "{}", sequence).expect("Failed to write sequence");
+        }
+
+        let k = 31;
+        let m = 15;
+        let bf_size = 8;
+        let partition_number = 2;
+        let color_number = 6; 
+        let abundance_number = 255;
+        let abundance_max = 65535;
+        let dense_option = false;
+        let threshold = color_number;
+
+        let (_file_paths, index_dir) = build_index(
+            vec![
+                file1_path.clone(),
+                file2_path.clone(),
+                file3_path.clone(),
+                file4_path.clone(),
+                file5_path.clone(),
+                file6_path.clone(),
        
-//     //         ],
-//     //         k,
-//     //         m,
-//     //         bf_size,
-//     //         partition_number,
-//     //         color_number,
-//     //         abundance_number,
-//     //         abundance_max,
-//     //         Some(&test_dir),
-//     //     )
-//     //     .expect("Failed to build index");
-//     //     let query_results_path = format!("{}/query_results.csv", index_dir);
-//     //     query_bloom_filter(&file5_path, &test_dir, &query_results_path, false)
-//     //         .expect("Failed to query sequences");
+            ],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+        let query_results_path = format!("{}/query_results.csv", index_dir);
+        query_index(&file6_path, &test_dir, &query_results_path, false)
+            .expect("Failed to query sequences");
+
+       
+        let mut reader =
+            csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let seq_id = record[0].to_string();
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((seq_id, color, abundance));
+        }
+
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
+        let mut expected_results = vec![
+            (">seq6 ka:f:4".to_string(), 2, 1476),
+            (">seq6 ka:f:4".to_string(), 5, 4),
+        ];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+
+    }
+
+
+    //#[ignore]
+    #[test]
+    fn test_build_and_query_index_with_chunks_and_merge3() {
+        let test_dir = "test_files_bq_merge3";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
+
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
+        let file3_path = format!("{}/file3Q.fa", test_dir);
+        let file4_path = format!("{}/file4Q.fa", test_dir);
+        let file5_path = format!("{}/file5Q.fa", test_dir);
+        let file6_path = format!("{}/file6Q.fa", test_dir);
+        let file7_path = format!("{}/file7Q.fa", test_dir);
+        let file8_path = format!("{}/file8Q.fa", test_dir);
+        let file9_path = format!("{}/file9Q.fa", test_dir);
+
+
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file3_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file4_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file5_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file6_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file7_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file8_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file9_path).expect("Failed to write to fof.txt");
+
+        }
+
+        for (file_path, (seq_id, ka_value, sequence)) in [
+            (&file1_path, ("seq1", 30, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA")),
+            (&file2_path, ("seq2", 12, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT")),
+            (&file3_path, ("seq3", 1500, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
+            (&file4_path, ("seq4", 1000, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")),
+            (&file5_path, ("seq5", 60_000, "TAAAAAAAAAAAAAAAAAAAACACCCCTGGG")),
+            (&file6_path, ("seq6", 4, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
+            (&file7_path, ("seq7", 1000, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")),
+            (&file8_path, ("seq8", 450, "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG")),
+            (&file9_path, ("seq9", 4, "GGGGAAAAAAAAAAAAAAAAAACAAAAAGAA")),
+
+        ] {
+            let mut file = File::create(file_path).expect("Failed to create FASTA file");
+            writeln!(file, ">{} ka:f:{}", seq_id, ka_value).expect("Failed to write header");
+            writeln!(file, "{}", sequence).expect("Failed to write sequence");
+        }
+
+        let k = 31;
+        let m = 15;
+        let bf_size = 4;
+        let partition_number = 2;
+        let color_number = 9; 
+        let abundance_number = 255;
+        let abundance_max = 65535;
+        let dense_option = false;
+        let threshold = color_number;
+
+        let (_file_paths, index_dir) = build_index(
+            vec![
+                file1_path.clone(),
+                file2_path.clone(),
+                file3_path.clone(),
+                file4_path.clone(),
+                file5_path.clone(),
+                file6_path.clone(),
+                file7_path.clone(),
+                file8_path.clone(),
+                file9_path.clone(),
+       
+            ],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+        let query_results_path = format!("{}/query_results.csv", index_dir);
+
+        query_index(&file5_path, &test_dir, &query_results_path, false)
+            .expect("Failed to query sequences");
+
+        let mut reader =
+            csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let seq_id = record[0].to_string();
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((seq_id, color, abundance));
+        }
+
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
+        let mut expected_results = vec![
+            (">seq5 ka:f:60000".to_string(), 4, 59149),
+        ];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
+
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+
+    }
+
+
+
+    //#[ignore]
+    #[test]
+    fn test_build_and_query_index_with_chunks_and_merge4() {
+        let test_dir = "test_files_bq_merge4";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
+
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
+        let file3_path = format!("{}/file3Q.fa", test_dir);
+        let file4_path = format!("{}/file4Q.fa", test_dir);
+        let file5_path = format!("{}/file5Q.fa", test_dir);
+
+
+
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file3_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file4_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file5_path).expect("Failed to write to fof.txt");
+
+        }
+
+        for (file_path, sequences) in [
+        (
+            &file1_path,
+            vec![("seq1", 30, "AAAAAAAAAAAAAAAAAAAAAACACAGATCA")],
+        ),
+        (
+            &file2_path,
+            vec![("seq2", 12, "AAAAAAAAAAAAAAAAAAAAACACAGATCAT")],
+        ),
+        (
+            &file3_path,
+            vec![("seq3", 1500, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")],
+        ),
+        (
+            &file4_path,
+            vec![("seq4", 1000, "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")],
+        ),
+        (
+            &file5_path,
+            vec![
+                ("seq5", 60_000, "TAAAAAAAAAAAAAAAAAAAACACCCCTGGG"),
+                ("seq6", 4, "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA"),
+            ],
+        ),
+        ] {
+            let mut file = File::create(file_path).expect("Failed to create FASTA file");
+            for (seq_id, ka_value, sequence) in sequences {
+                writeln!(file, ">{} ka:f:{}", seq_id, ka_value).expect("Failed to write header");
+                writeln!(file, "{}", sequence).expect("Failed to write sequence");
+            }
+        }
+
+
+        let k = 31;
+        let m = 15;
+        let bf_size = 256*256;
+        let partition_number = 2;
+        let color_number = 5; 
+        let abundance_number = 255;
+        let abundance_max = 65535;
+        let dense_option = false;
+        let threshold = color_number;
+
+        let (_file_paths, index_dir) = build_index(
+            vec![
+                file1_path.clone(),
+                file2_path.clone(),
+                file3_path.clone(),
+                file4_path.clone(),
+                file5_path.clone(),
+       
+            ],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+        let query_results_path = format!("{}/query_results.csv", index_dir);
+        query_index(&file5_path, &test_dir, &query_results_path, false)
+            .expect("Failed to query sequences");
 
         
-//     //     let mut reader =
-//     //         csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+        let mut reader =
+            csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
 
-//     //     let mut results: Vec<(String, usize, usize)> = Vec::new();
-//     //     for record in reader.records() {
-//     //         let record = record.expect("Failed to read record");
-//     //         let seq_id = record[0].to_string();
-//     //         let color: usize = record[1].parse().expect("Failed to parse color");
-//     //         let abundance: usize = record[2].parse().expect("Failed to parse abundance");
-//     //         results.push((seq_id, color, abundance));
-//     //     }
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let seq_id = record[0].to_string();
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((seq_id, color, abundance));
+        }
 
-//     //     assert!(
-//     //         !results.is_empty(),
-//     //         "Empty results"
-//     //     );
-//     //     let mut expected_results = vec![
-//     //         (">seq5 ka:f:60000".to_string(), 4, 59176),
-//     //         (">seq6 ka:f:4".to_string(), 2, 1450),
-//     //         (">seq6 ka:f:4".to_string(), 4, 4),
-//     //     ];
-//     //     results.sort();
-//     //     expected_results.sort();
-//     //     for (expected, actual) in expected_results.iter().zip(results.iter()) {
-//     //         assert_eq!(
-//     //             expected, actual,
-//     //             "Mismatch: expected {:?}, got {:?}",
-//     //             expected, actual
-//     //         );
-//     //     }
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
+        let mut expected_results = vec![
+            (">seq5 ka:f:60000".to_string(), 4, 59149),
+            (">seq6 ka:f:4".to_string(), 2, 1476),
+            (">seq6 ka:f:4".to_string(), 4, 4),
+        ];
+        results.sort();
+        expected_results.sort();
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
 
 
         
-//     //     fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
 
-//     // }
-
-
+    }
 
 
-//     #[test]
-//     fn test_merge_partition_bloom_filters() {
-//         use roaring::RoaringBitmap;
-//         use std::fs::{create_dir_all, File};
-//         use std::io::Write;
-
-//         let test_dir = "test_merge_partition_bloom_filters";
-//         create_dir_all(test_dir).expect("Failed to create test directory");
-
-//         let chunk1_path = format!("{}/chunk1_p0.txt", test_dir);
-//         let chunk2_path = format!("{}/chunk2_p0.txt", test_dir);
-//         let chunk3_path = format!("{}/chunk3_p0.txt", test_dir);
 
 
-//         let partition_idx = 0;
-//         let partitioned_bf_size = 2; 
-//         let abundance_number = 3;
-//         // test Bloom filters
-//         let mut bf1 = RoaringBitmap::new();
-//         bf1.insert(1); 
-//         bf1.insert(2); //011000 000000
-//         let mut bf2 = RoaringBitmap::new();
-//         bf2.insert(3);
-//         bf2.insert(4); // 000110 000000
-//         let mut bf3 = RoaringBitmap::new();
-//         bf3.insert(5); // 000 001
+    #[test]
+    fn test_merge_partition_bloom_filters() {
+        use roaring::RoaringBitmap;
+        use std::fs::{create_dir_all, File};
+        use std::io::Write;
 
-//         //expected
-//         // 011000000110000 000000000000001 [1,2,9,10,29]
+        let test_dir = "test_merge_partition_bloom_filters";
+        create_dir_all(test_dir).expect("Failed to create test directory");
 
-//         let chunk_files = vec![chunk1_path.clone(), chunk2_path.clone(), chunk3_path.clone()];
-//         let color_counts = vec![2, 2, 1]; //nb of colors for each chunk
+        let chunk1_path = format!("{}/chunk1_p0.txt", test_dir);
+        let chunk2_path = format!("{}/chunk2_p0.txt", test_dir);
+        let chunk3_path = format!("{}/chunk3_p0.txt", test_dir);
 
-//         for (chunk_path, (bf, colors)) in chunk_files.iter().zip(vec![(bf1, 2), (bf2, 2), (bf3, 1)]) {
-//             let mut file = File::create(chunk_path).expect("Failed to create test chunk file");
-//             file.write_all(&(colors as u64).to_le_bytes()).expect("Failed to write color count");
-//             bf.serialize_into(&mut file).expect("Failed to serialize Bloom filter");
-//         }
+
+        let partition_idx = 0;
+        let partitioned_bf_size = 2; 
+        let abundance_number = 3;
+        // test Bloom filters
+        let mut bf1 = RoaringBitmap::new();
+        bf1.insert(1); 
+        bf1.insert(2); //011000 000000
+        let mut bf2 = RoaringBitmap::new();
+        bf2.insert(3);
+        bf2.insert(4); // 000110 000000
+        let mut bf3 = RoaringBitmap::new();
+        bf3.insert(5); // 000 001
+
+        //expected
+        // 011000000110000 000000000000001 [1,2,9,10,29]
+
+        let chunk_files = vec![chunk1_path.clone(), chunk2_path.clone(), chunk3_path.clone()];
+        let color_counts = vec![2, 2, 1]; //nb of colors for each chunk
+
+        for (chunk_path, (bf, colors)) in chunk_files.iter().zip(vec![(bf1, 2), (bf2, 2), (bf3, 1)]) {
+            let mut file = File::create(chunk_path).expect("Failed to create test chunk file");
+            file.write_all(&(colors as u64).to_le_bytes()).expect("Failed to write color count");
+            bf.serialize_into(&mut file).expect("Failed to serialize Bloom filter");
+        }
 
      
 
-//         let mut merged_bf =RoaringBitmap::new();
+        let mut merged_bf =RoaringBitmap::new();
     
-//         // Call the modified function
-//         merge_partition_bloom_filters(
-//             chunk_files.clone(),
-//             partition_idx,
-//             partitioned_bf_size,
-//             abundance_number,
-//             &color_counts,
-//             &mut merged_bf,
-//             "test_merge_partition_bloom_filters",
-//             5
-//         )
-//         .expect("Failed to merge partition Bloom filters");
+        // Call the modified function
+        merge_partition_bloom_filters(
+            chunk_files.clone(),
+            partition_idx,
+            partitioned_bf_size,
+            abundance_number,
+            &color_counts,
+            &mut merged_bf,
+            "test_merge_partition_bloom_filters",
+            5
+        )
+        .expect("Failed to merge partition Bloom filters");
     
-//         // check the merged Bloom filter
-//         // let merged_bf = merged_bloom_filter.lock().unwrap();
+        // check the merged Bloom filter
+        // let merged_bf = merged_bloom_filter.lock().unwrap();
 
-//         //let final_output_path = format!("{}/partition_bloom_filters_p{}.txt", output_dir, partition_idx);
-//         //let (merged_bf, color_nb) = load_bloom_filter(&final_output_path).expect("Failed to load merged Bloom filter");
+        //let final_output_path = format!("{}/partition_bloom_filters_p{}.txt", output_dir, partition_idx);
+        //let (merged_bf, color_nb) = load_bloom_filter(&final_output_path).expect("Failed to load merged Bloom filter");
 
-//         //assert_eq!(
-//         //    color_nb, 5,
-//         //    "Expected the merged Bloom filter to represent 5 colors, but got {}",
-//         //    color_nb
-//         //);
+        //assert_eq!(
+        //    color_nb, 5,
+        //    "Expected the merged Bloom filter to represent 5 colors, but got {}",
+        //    color_nb
+        //);
 
-//         let expected_elements: Vec<u32> = vec![1, 2, 9,10,29];
-//         for elem in expected_elements {
-//             assert!(
-//                 merged_bf.contains(elem),
-//                 "Expected element {} not found in the merged Bloom filter",
-//                 elem
-//             );
-//         }
+        let expected_elements: Vec<u32> = vec![1, 2, 9,10,29];
+        for elem in expected_elements {
+            assert!(
+                merged_bf.contains(elem),
+                "Expected element {} not found in the merged Bloom filter",
+                elem
+            );
+        }
 
-//         fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
-//     }
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+    }
    
-    // TODO
-    // //#[ignore] 
-    // #[test]
-    // fn test_build_and_query_index_with_chunks_and_merge_longseq() {
-    //     let test_dir = "test_files_bq_merge3_ls";
-    //     fs::create_dir_all(test_dir).expect("Failed to create test directory");
+ 
+    //#[ignore] 
+    #[test]
+    fn test_build_and_query_index_with_chunks_and_merge_longseq() {
+        let test_dir = "test_files_bq_merge3_ls";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
 
-    //     let fof_path = format!("{}/fof.txt", test_dir);
-    //     let file1_path = format!("{}/file1Q.fa", test_dir);
-    //     let file2_path = format!("{}/file2Q.fa", test_dir);
-    //     let file3_path = format!("{}/file3Q.fa", test_dir);
-    //     let file4_path = format!("{}/file4Q.fa", test_dir);
-    //     let file5_path = format!("{}/file5Q.fa", test_dir);
-    //     let file6_path = format!("{}/file6Q.fa", test_dir);
-    //     let file7_path = format!("{}/file7Q.fa", test_dir);
-    //     let file8_path = format!("{}/file8Q.fa", test_dir);
-    //     let file9_path = format!("{}/file9Q.fa", test_dir);
+        let fof_path = format!("{}/fof.txt", test_dir);
+        let file1_path = format!("{}/file1Q.fa", test_dir);
+        let file2_path = format!("{}/file2Q.fa", test_dir);
+        let file3_path = format!("{}/file3Q.fa", test_dir);
+        let file4_path = format!("{}/file4Q.fa", test_dir);
+        let file5_path = format!("{}/file5Q.fa", test_dir);
+        let file6_path = format!("{}/file6Q.fa", test_dir);
+        let file7_path = format!("{}/file7Q.fa", test_dir);
+        let file8_path = format!("{}/file8Q.fa", test_dir);
+        let file9_path = format!("{}/file9Q.fa", test_dir);
 
 
-    //     {
-    //         let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
-    //         writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
-    //         writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
-    //         writeln!(fof_file, "{}", file3_path).expect("Failed to write to fof.txt");
-    //         writeln!(fof_file, "{}", file4_path).expect("Failed to write to fof.txt");
-    //         writeln!(fof_file, "{}", file5_path).expect("Failed to write to fof.txt");
-    //         writeln!(fof_file, "{}", file6_path).expect("Failed to write to fof.txt");
-    //         writeln!(fof_file, "{}", file7_path).expect("Failed to write to fof.txt");
-    //         writeln!(fof_file, "{}", file8_path).expect("Failed to write to fof.txt");
-    //         writeln!(fof_file, "{}", file9_path).expect("Failed to write to fof.txt");
+        {
+            let mut fof_file = File::create(&fof_path).expect("Failed to create fof.txt");
+            writeln!(fof_file, "{}", file1_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file2_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file3_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file4_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file5_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file6_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file7_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file8_path).expect("Failed to write to fof.txt");
+            writeln!(fof_file, "{}", file9_path).expect("Failed to write to fof.txt");
 
-    //     }
+        }
 
-    //     for (file_path, (seq_id, ka_value, sequence)) in [
-    //         (&file1_path, ("seq1", 30,    "AAAAAAAAAAAAAAAAAAAAAACACAGATTT")),
-    //         (&file2_path, ("seq2", 12,    "AAAAAAAAAAAAAAAAAAAAACACAGATCAT")),
-    //         (&file3_path, ("seq3", 1500,  "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
-    //         (&file4_path, ("seq4", 1000,  "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")),
-    //         (&file5_path, ("seq5", 60_000,"TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT")),
-    //         (&file6_path, ("seq6", 4,     "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
-    //         (&file7_path, ("seq7", 1000,  "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")),
-    //         (&file8_path, ("seq8", 450,   "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG")),
-    //         (&file9_path, ("seq9", 4,     "GGGGAAAAAAAAAAAAAAAAAACAAAAAGAA")),
+        for (file_path, (seq_id, ka_value, sequence)) in [
+            (&file1_path, ("seq1", 30,    "AAAAAAAAAAAAAAAAAAAAAACACAGATTT")),
+            (&file2_path, ("seq2", 12,    "AAAAAAAAAAAAAAAAAAAAACACAGATCAT")),
+            (&file3_path, ("seq3", 1500,  "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
+            (&file4_path, ("seq4", 1000,  "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")),
+            (&file5_path, ("seq5", 60_000,"TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT")),
+            (&file6_path, ("seq6", 4,     "AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA")),
+            (&file7_path, ("seq7", 1000,  "AAAAAAAAAAAAAAAAAAAAAACACCCCTGG")),
+            (&file8_path, ("seq8", 450,   "AAAAAAAAAAAAAAAAAAAAACACCCCTGGG")),
+            (&file9_path, ("seq9", 4,     "GGGGAAAAAAAAAAAAAAAAAACAAAAAGAA")),
 
-    //     ] {
-    //         let mut file = File::create(file_path).expect("Failed to create FASTA file");
-    //         writeln!(file, ">{} ka:f:{}", seq_id, ka_value).expect("Failed to write header");
-    //         writeln!(file, "{}", sequence).expect("Failed to write sequence");
-    //     }
+        ] {
+            let mut file = File::create(file_path).expect("Failed to create FASTA file");
+            writeln!(file, ">{} ka:f:{}", seq_id, ka_value).expect("Failed to write header");
+            writeln!(file, "{}", sequence).expect("Failed to write sequence");
+        }
 
-    //     let k = 31;
-    //     let m = 15;
-    //     let bf_size = 32;
-    //     let partition_number = 2;
-    //     let color_number = 9; 
-    //     let abundance_number = 256;
-    //     let abundance_max = 65535;
+        let k = 31;
+        let m = 15;
+        let bf_size = 32;
+        let partition_number = 2;
+        let color_number = 9; 
+        let abundance_number = 255;
+        let abundance_max = 65535;
+        let dense_option = false;
+        let threshold = color_number;
 
-    //     let (_file_paths, index_dir) = main_index_construction(
-    //         vec![
-    //             file1_path.clone(),
-    //             file2_path.clone(),
-    //             file3_path.clone(),
-    //             file4_path.clone(),
-    //             file5_path.clone(),
-    //             file6_path.clone(),
-    //             file7_path.clone(),
-    //             file8_path.clone(),
-    //             file9_path.clone(),
+        let (_file_paths, index_dir) = build_index(
+            vec![
+                file1_path.clone(),
+                file2_path.clone(),
+                file3_path.clone(),
+                file4_path.clone(),
+                file5_path.clone(),
+                file6_path.clone(),
+                file7_path.clone(),
+                file8_path.clone(),
+                file9_path.clone(),
        
-    //         ],
-    //         k,
-    //         m,
-    //         bf_size,
-    //         partition_number,
-    //         color_number,
-    //         abundance_number,
-    //         abundance_max,
-    //         Some(&test_dir),
-    //     )
-    //     .expect("Failed to build index");
-    //     let query_results_path = format!("{}/query_results.csv", index_dir);
+            ],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+        let query_results_path = format!("{}/query_results.csv", index_dir);
 
-    //     query_bloom_filter(&file2_path, &test_dir, &query_results_path, false)
-    //         .expect("Failed to query sequences");
+        query_index(&file2_path, &test_dir, &query_results_path, false)
+            .expect("Failed to query sequences");
 
-    //     let mut reader =
-    //         csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
+        let mut reader =
+            csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
 
-    //     let mut results: Vec<(String, usize, usize)> = Vec::new();
-    //     for record in reader.records() {
-    //         let record = record.expect("Failed to read record");
-    //         let seq_id = record[0].to_string();
-    //         let color: usize = record[1].parse().expect("Failed to parse color");
-    //         let abundance: usize = record[2].parse().expect("Failed to parse abundance");
-    //         results.push((seq_id, color, abundance));
-    //     }
+        let mut results: Vec<(String, usize, usize)> = Vec::new();
+        for record in reader.records() {
+            let record = record.expect("Failed to read record");
+            let seq_id = record[0].to_string();
+            let color: usize = record[1].parse().expect("Failed to parse color");
+            let abundance: usize = record[2].parse().expect("Failed to parse abundance");
+            results.push((seq_id, color, abundance));
+        }
 
-    //     assert!(
-    //         !results.is_empty(),
-    //         "Empty results"
-    //     );
-    //     let expected_results = vec![
-    //         //("seq5".to_string(), 4, 57549),
-    //         (">seq2 ka:f:12".to_string(), 1, 12),
-    //     ];
+        assert!(
+            !results.is_empty(),
+            "Empty results"
+        );
+        let expected_results = vec![
+            //("seq5".to_string(), 4, 57549),
+            (">seq2 ka:f:12".to_string(), 1, 12),
+        ];
 
-    //     for (expected, actual) in expected_results.iter().zip(results.iter()) {
-    //         assert_eq!(
-    //             expected, actual,
-    //             "Mismatch: expected {:?}, got {:?}",
-    //             expected, actual
-    //         );
-    //     }
+        for (expected, actual) in expected_results.iter().zip(results.iter()) {
+            assert_eq!(
+                expected, actual,
+                "Mismatch: expected {:?}, got {:?}",
+                expected, actual
+            );
+        }
 
 
         
-    //     fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
 
-    // }
+    }
 
 
-    // TODO
-    // #[test]
-    // fn test_color_graph() {
-    //     let test_dir = "test_color_graph";
-    //     fs::create_dir_all(test_dir).expect("Failed to create test directory");
+    #[test]
+    fn test_color_graph() {
+        let test_dir = "test_color_graph";
+        fs::create_dir_all(test_dir).expect("Failed to create test directory");
 
-    //     let fasta_path = format!("{}/test.fasta", test_dir);
-    //     let output_path = format!("{}/colored_graph_output.fasta", test_dir);
+        let fasta_path = format!("{}/test.fasta", test_dir);
+        let output_path = format!("{}/colored_graph_output.fasta", test_dir);
 
-    //     {
-    //         let mut file = File::create(&fasta_path).expect("Failed to create test.fasta");
-    //         writeln!(file, ">seq1 ka:f:29").expect("Failed to write header");
-    //         writeln!(file, "TAAAAAAAAAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
-    //         writeln!(file, ">seq2 ka:f:250").expect("Failed to write header");
-    //         writeln!(file, "TTTTTAATGATCGATTTTTTTTTTTACCCCTGG").expect("Failed to write sequence");
-    //     }
+        {
+            let mut file = File::create(&fasta_path).expect("Failed to create test.fasta");
+            writeln!(file, ">seq1 ka:f:29").expect("Failed to write header");
+            writeln!(file, "TAAAAAAAAAAAAAAAAAAAAAAAAAAAAACACAGATCA").expect("Failed to write sequence");
+            writeln!(file, ">seq2 ka:f:250").expect("Failed to write header");
+            writeln!(file, "TTTTTAATGATCGATTTTTTTTTTTACCCCTGG").expect("Failed to write sequence");
+        }
 
-    //     let k = 31;
-    //     let m = 15;
-    //     let bf_size = 1024 * 1024;
-    //     let partition_number = 4;
-    //     let color_number = 1;
-    //     let abundance_number = 256;
-    //     let abundance_max = 65535;
-    //     let batch_size = 2;
-    //     let (_file_paths, _index_dir) = main_index_construction(
-    //         vec![
-    //             fasta_path.clone(),
-    //         ],
-    //         k,
-    //         m,
-    //         bf_size,
-    //         partition_number,
-    //         color_number,
-    //         abundance_number,
-    //         abundance_max,
-    //         Some(&test_dir),
-    //     )
-    //     .expect("Failed to build index");
-    //     query_sequences_in_batches(
-    //         &fasta_path,
-    //         test_dir,
-    //         k,
-    //         m,
-    //         bf_size,
-    //         partition_number,
-    //         color_number,
-    //         abundance_number,
-    //         abundance_max,
-    //         batch_size,
-    //         &output_path,
-    //         true, //  graph coloring
-    //     )
-    //     .expect("Failed to color graph");
+        let k = 31;
+        let m = 15;
+        let bf_size = 1024 * 1024;
+        let partition_number = 4;
+        let color_number = 1;
+        let abundance_number = 255;
+        let abundance_max = 65535;
+        let _batch_size = 2;
+        let dense_option = false;
+        let threshold = color_number;
 
-    //     let expected_output = vec![
-    //        ">seq1 ka:f:29 col:0:29", "TAAAAAAAAAAAAAAAAAAAAAAAAAAAAACACAGATCA", ">seq2 ka:f:250 col:0:247", "TTTTTAATGATCGATTTTTTTTTTTACCCCTGG",
-    //     ];
 
-    //     let mut actual_output = Vec::new();
-    //     let output_file = File::open(&output_path).expect("Failed to open output file");
-    //     let reader = BufReader::new(output_file);
+        let (_file_paths, _index_dir) = build_index(
+            vec![
+                fasta_path.clone(),
+            ],
+            k,
+            m,
+            bf_size,
+            partition_number,
+            color_number,
+            abundance_number,
+            abundance_max,
+            &String::from(test_dir),
+            dense_option,
+            threshold,
+        )
+        .expect("Failed to build index");
+        query_index(
+            &fasta_path,
+            test_dir,
+            &output_path,
+            true, //  graph coloring
+        )
+        .expect("Failed to color graph");
 
-    //     for line in reader.lines() {
-    //         actual_output.push(line.expect("Failed to read line"));
-    //     }
+        let expected_output = vec![
+           ">seq1 ka:f:29 col:0:29", "TAAAAAAAAAAAAAAAAAAAAAAAAAAAAACACAGATCA", ">seq2 ka:f:250 col:0:249", "TTTTTAATGATCGATTTTTTTTTTTACCCCTGG",
+        ];
 
-    //     assert_eq!(
-    //         expected_output, actual_output,
-    //         "Mismatch between expected and actual output"
-    //     );
+        let mut actual_output = Vec::new();
+        let output_file = File::open(&output_path).expect("Failed to open output file");
+        let reader = BufReader::new(output_file);
 
-    //     fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
-    // }
+        for line in reader.lines() {
+            actual_output.push(line.expect("Failed to read line"));
+        }
+
+        assert_eq!(
+            expected_output, actual_output,
+            "Mismatch between expected and actual output"
+        );
+
+        fs::remove_dir_all(test_dir).expect("Failed to clean up test directory");
+    }
     
-    // TODO
+
     // use csv::Reader;
     // #[test]
     // fn test_merge_multiple_indexes_from_fof() -> io::Result<()> {
@@ -3827,12 +4447,13 @@ fn _display_progress(total_kmers: u64, start_time: Instant) {
     //     let m = 3;
     //     let bf_size = 1024;         
     //     let partitions = 2;         
-    //     let abundance = 256;
+    //     let abundance = 255;
     //     let abundance_max = 65535;
+    //     let dense_option = false;
 
     //     // for index1, color count = 1
     //     let index1_file_paths = vec![file1_path.clone()];
-    //     let (_dummy, index_dir1) = main_index_construction(
+    //     let (_dummy, index_dir1) = build_index(
     //         index1_file_paths,
     //         k,
     //         m,
@@ -3841,11 +4462,13 @@ fn _display_progress(total_kmers: u64, start_time: Instant) {
     //         1, // color_number = 1
     //         abundance,
     //         abundance_max,
-    //         Some(&index1_index_dir),
+    //         &String::from(index1_index_dir),
+    //         dense_option,
+    //         1
     //     )?;
     //     //index2
     //     let index2_file_paths = vec![file2_path.clone(), file3_path.clone()];
-    //     let (_dummy, index_dir2) = main_index_construction(
+    //     let (_dummy, index_dir2) = build_index(
     //         index2_file_paths,
     //         k,
     //         m,
@@ -3854,7 +4477,9 @@ fn _display_progress(total_kmers: u64, start_time: Instant) {
     //         2, // color_number = 2
     //         abundance,
     //         abundance_max,
-    //         Some(&index2_index_dir),
+    //         &String::from(index2_index_dir),
+    //         dense_option,
+    //         2
     //     )?;
 
     //     {
@@ -3863,9 +4488,9 @@ fn _display_progress(total_kmers: u64, start_time: Instant) {
     //         writeln!(fof, "{}", index_dir2)?;
     //     }
 
-    //     merge_multiple_indexes(&indexes_fof, Some(&merged_index_dir))?;
+    //     merge_all_partitions(&indexes_fof, Some(&merged_index_dir))?;
 
-    //     let merged_csv_path = format!("{}/index_info.csv", merged_index_dir);
+    //     let merged_csv_path: String = format!("{}/index_info.csv", merged_index_dir);
     //     let mut rdr = Reader::from_reader(File::open(&merged_csv_path)?);
     //     let record = rdr
     //         .records()
@@ -3885,5 +4510,5 @@ fn _display_progress(total_kmers: u64, start_time: Instant) {
 
     //     Ok(())
     // }
-/**/
-// }
+
+}

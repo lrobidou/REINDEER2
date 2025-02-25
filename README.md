@@ -1,5 +1,7 @@
 # REINDEER 2
 
+REINDEER 2 is an efficiant and scalable k-mer abundance index.
+
 ## Installation
 
 ### Compilation
@@ -40,6 +42,7 @@ General parameters:
 - `-o, --output` an output directory for the index
 - `-a, --abundance` the abundance granularity (number of levels or discretized abundance values)
 - `-A, --abundance-max` the maximal abundance to take into account
+- `--dense` (true/false) allows to index dense k-mers - shared k-mers among datasets - more efficiently (default: false)
 
 Advanced parameters: 
 - `-b, --bloomfilter` the Bloom filter size in log2 scale

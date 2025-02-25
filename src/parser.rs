@@ -72,9 +72,8 @@ pub fn parse_args() -> ArgMatches {
                 .long("dense")
                 .value_name("DENSE")
                 .action(ArgAction::Set)
-                .help("For 'index' mode: If set, allows to index dense k-mers - i.e. shared k-mers among datasets - more efficiently, 
-                at the cost of higher RAM consumption, limited parameters (k-mer size <= 32, number of abundance levels <= 255) and limited multithreading 
-                on small datasets (default: false)")
+                .help("For 'index' mode: If set, allows to index dense k-mers - i.e. shared k-mers among datasets - more efficiently, at the cost of higher RAM consumption, 
+                limited parameters (k-mer size <= 32, number of abundance levels <= 255) and limited multithreading on small datasets (default: false)")
         )
         // .arg(
         //     Arg::new("threshold")
