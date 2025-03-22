@@ -36,13 +36,19 @@ pub fn build_index(
     output_dir: &String,
     dense_option: bool,
     threshold: usize,
+    debug: bool,
 ) -> io::Result<(Vec<String>, String)> {
     let mut total_kmers = atomic::AtomicU64::new(0);
     let mut atomic_dense_kmers_count = atomic::AtomicU64::new(0);
     let mut atomic_sparse_kmers_count = atomic::AtomicU64::new(0);
+    let mut atomic_sparse_one_seen = atomic::AtomicU64::new(0);
+    let mut atomic_sparse_fp_seen = atomic::AtomicU64::new(0);
     let (chunks, color_chunks) = split_fof(&file_paths)?;
     let base = compute_base(abundance_number, abundance_max);
     let partitioned_bf_size = (bf_size as usize) / partition_number;
+    if debug {
+        println!("In debug mode... the tool may take (much) longer than usual.");
+    }
     println!("Initializing Bloom filter slices...");
 
     let (_, dir_path) = create_dir_and_files(partition_number, output_dir)?;
@@ -128,6 +134,9 @@ pub fn build_index(
                 Err(_) => eprintln!("Path {} does not exist", path),
             }
         });
+        if debug {
+            update_sparse_counts(&bloom_filters, &atomic_sparse_one_seen, &atomic_sparse_fp_seen, abundance_number)?;
+        }
         if let Err(e) = write_bloom_filters_to_disk(
             &dir_path, 
             &bloom_filters,
@@ -144,12 +153,26 @@ pub fn build_index(
     match maybe_dense_indexes {
         Some(dense_indexes) => {
             write_dense_indexes_to_disk(&dir_path, &dense_indexes)?;
-            println!("The index contains {:?} 'dense' k-mers and {:?} 'sparse' k-mers (total k-mers: {:?})", 
-                atomic_dense_kmers_count.get_mut().separate_with_commas(), 
-                atomic_sparse_kmers_count.get_mut().separate_with_commas(), 
-                total_kmers.get_mut().separate_with_commas());
         },
         None => (),
+    }
+
+    if debug {
+        // k-mers repartition between dense and sparse index
+        println!("The index contains {:?} 'dense' k-mers and {:?} 'sparse' k-mers (total k-mers: {:?})", 
+            atomic_dense_kmers_count.get_mut().separate_with_commas(), 
+            atomic_sparse_kmers_count.get_mut().separate_with_commas(), 
+            total_kmers.get_mut().separate_with_commas());
+
+        let ones = atomic_sparse_one_seen.get_mut();
+        let silent = *atomic_sparse_kmers_count.get_mut() - *ones;
+        let fp = atomic_sparse_fp_seen.get_mut();
+        // k-mers indexed in the sparse index, FP silent and FP seen
+        println!("Among the {:?} k-mers added in the 'sparse' index, {:?} encountered hash collisions ({:?} silent and {:?} misleading).", 
+            atomic_sparse_kmers_count.get_mut().separate_with_commas(), 
+            (silent+*fp).separate_with_commas(),
+            silent.separate_with_commas(), 
+            fp.separate_with_commas());
     }
     
 
@@ -427,7 +450,6 @@ fn count_zeros(
         .filter(|&&val| val == 0)
         .count())
 }
-
 
 
 
@@ -1187,6 +1209,45 @@ fn _get_current_chunk_index(i: usize, chunk_sizes: &Vec<usize>,  partition_nb:us
     panic!("Index {} out of bounds for chunk sizes {:?}", i, chunk_sizes);
 }
 
+fn update_sparse_counts(
+    bloom_filters: &Arc<Vec<Mutex<RoaringBitmap>>>,
+    atomic_sparse_one_seen: &atomic::AtomicU64,
+    atomic_sparse_fp_seen: &atomic::AtomicU64,
+    abundance_number: usize,
+) -> io::Result<()> {
+    let ones_by_partition = Arc::new(Mutex::new(Vec::<(usize,usize)>::new()));
+    bloom_filters.par_iter().for_each(|bitmap| {
+        let locked_bitmap = bitmap.lock().unwrap();
+        let mut color: usize = 0;
+        let mut new_color: usize = 0;
+        let mut ones: usize = 0;
+        let mut fp: usize = 0;
+        locked_bitmap.iter().for_each(|value| {
+            ones += 1;
+            new_color = (value as usize) / abundance_number;
+            if new_color != color {
+                color = new_color;
+            } else {
+                fp += 1;
+            }
+        });
+        let mut tmp_vector = ones_by_partition.lock().unwrap();
+        tmp_vector.push((ones, fp));
+        atomic_sparse_one_seen.fetch_add(ones as u64, atomic::Ordering::Relaxed);
+        atomic_sparse_fp_seen.fetch_add(fp as u64, atomic::Ordering::Relaxed);
+    });
+
+    let file = File::create("partitions_info.log")?;
+    let mut writer = BufWriter::new(file);
+    let tmp_vector: std::sync::MutexGuard<'_, Vec<(usize, usize)>> = ones_by_partition.lock().unwrap();
+    for (a1, a2) in tmp_vector.iter() {
+        writer.write(format!("{},{}\n", a1, a2).as_bytes())?;
+    }
+    writer.flush()?;
+
+    Ok(())
+}
+
 
 // --- WRITE INDEX ON DISK ---
 
@@ -1223,7 +1284,7 @@ fn create_dir_and_files(num_partition: usize, output_dir: &str) -> io::Result<(V
 
 fn write_bloom_filters_to_disk(
     dir_path: &str,
-    bloom_filters: & Arc<Vec<Mutex<RoaringBitmap>>>,
+    bloom_filters: &Arc<Vec<Mutex<RoaringBitmap>>>,
     chunks: &Vec<usize>, //  number of colors for each chunk
     partition_nb: usize,
     chunk_id:usize
@@ -2265,6 +2326,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
     
@@ -2356,6 +2418,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
     
@@ -2456,6 +2519,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
     
@@ -2553,6 +2617,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
     
@@ -2651,6 +2716,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
 
@@ -2742,6 +2808,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
 
@@ -2838,6 +2905,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
      
@@ -2943,6 +3011,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
      
@@ -3048,6 +3117,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
         /*
@@ -3154,6 +3224,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
         /*
@@ -3254,6 +3325,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
         /*
@@ -3353,6 +3425,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
         /*
@@ -3665,6 +3738,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+             false,
         )
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
@@ -3829,6 +3903,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
@@ -3952,6 +4027,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
@@ -4081,6 +4157,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
@@ -4291,6 +4368,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
@@ -4376,6 +4454,7 @@ mod tests {
             &String::from(test_dir),
             dense_option,
             threshold,
+            false,
         )
         .expect("Failed to build index");
         query_index(

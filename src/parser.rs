@@ -36,35 +36,35 @@ pub fn parse_args() -> ArgMatches {
                 .short('m')
                 .long("minimizer")
                 .value_name("MINSIZE")
-                .help("For 'index' mode: Sets the minimizer size"),
+                .help("For 'index' mode: Sets the minimizer size (default: 15)"),
         )
         .arg(
             Arg::new("partitions")
                 .short('p')
                 .long("partitions")
                 .value_name("MINSIZE")
-                .help("For 'index' mode: Sets the number of parititions"),
+                .help("For 'index' mode: Sets the number of partitions (default: 512)"),
         )
         .arg(
             Arg::new("bloomfilter")
                 .short('b')
                 .long("bloomfilter")
                 .value_name("BF")
-                .help("For 'index' mode: Sets the Bloom filter size (in log scale)"),
+                .help("For 'index' mode: Sets the Bloom filter size in log2 scale (default: 32)"),
         )
         .arg(
             Arg::new("abundance")
                 .short('a')
                 .long("abundance")
                 .value_name("ABUND")
-                .help("For 'index' mode: Sets the abundance granularity"),
+                .help("For 'index' mode: Sets the abundance granularity (default: 255)"),
         )
         .arg(
             Arg::new("abundance_max")
                 .short('A')
                 .long("abundance-max")
                 .value_name("ABUND_MAX")
-                .help("For 'index' mode: Sets the maximal abundance to take into account"),
+                .help("For 'index' mode: Sets the maximal abundance to take into account (default: 65024)"),
         )
         .arg(
             Arg::new("dense")
@@ -110,6 +110,12 @@ pub fn parse_args() -> ArgMatches {
                 .long("color")
                 .value_name("COLOR")
                 .help("For 'query' mode: bool for coloring a graph instead of regular query (default: false)\n"),
+        )
+        .arg(
+            Arg::new("debug")
+                .long("debug")
+                .value_name("DEBUG")
+                .help("Show additionnal informations for debugging purposes\n"),
         )
         .arg(
             Arg::new("version")

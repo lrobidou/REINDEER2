@@ -35,17 +35,17 @@ fn main() -> io::Result<()> {
             let minimizer = matches
                 .get_one::<String>("minimizer")
                 .map(|s| s.parse::<usize>().expect("Invalid minimizer size"))
-                .unwrap_or(11); // default size
+                .unwrap_or(15); // default size
 
             let partitions = matches
                 .get_one::<String>("partitions")
                 .map(|s| s.parse::<usize>().expect("Invalid number of partitions"))
-                .unwrap_or(8192); // default number of partitions
+                .unwrap_or(512); // default number of partitions
 
             let bloomfilter = matches
                 .get_one::<String>("bloomfilter")
                 .map(|s| s.parse::<usize>().expect("Invalid Bloom filter size"))
-                .unwrap_or(26); // default size
+                .unwrap_or(32); // default size
 
             let bf_size = 1u64 << bloomfilter; // Bloom filter size as a power of 2
             
@@ -57,7 +57,7 @@ fn main() -> io::Result<()> {
             let abundance_max = matches
                 .get_one::<String>("abundance_max")
                 .map(|s| s.parse::<u16>().expect("Invalid maximal abundance"))
-                .unwrap_or(65535);
+                .unwrap_or(65024);
 
             let dense_option = matches
                 .get_one::<String>("dense")
@@ -74,6 +74,11 @@ fn main() -> io::Result<()> {
                     &format!("PACAS_index_{}", dir_seed) // Generate a unique directory name
                 }
             };
+
+            let debug = matches
+                .get_one::<String>("debug")
+                .map(|s| s.parse::<bool>().expect("Invalid debug option"))
+                .unwrap_or(false);
 
             // CHECKS
             if dense_option {
@@ -113,6 +118,7 @@ fn main() -> io::Result<()> {
                 output_dir, //pass optional output dir, todo in passed arguments
                 dense_option,
                 threshold,
+                debug,
             )?;
 
             println!("Indexing complete in {:.2?}", start_time.elapsed());
