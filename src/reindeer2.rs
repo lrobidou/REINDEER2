@@ -74,7 +74,7 @@ pub fn build_index(
     for (chunk_i, chunk) in chunks.iter().enumerate() {
         // For each file in this chunk, process in *parallel* (soon)
         // TODO build the appropriate iterator to parallelize (or not) if dense is set
-        chunk.iter().enumerate().for_each(|(path_num, path)| {
+        chunk.par_iter().enumerate().for_each(|(path_num, path)| {
             match std::fs::metadata(path) {
                 Ok(metadata) => {
                     if metadata.is_file() {
