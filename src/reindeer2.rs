@@ -45,6 +45,9 @@ pub fn build_index(
     let mut atomic_sparse_fp_seen = atomic::AtomicU64::new(0);
     let (chunks, color_chunks) = split_fof(&file_paths)?;
     let base = compute_base(abundance_number, abundance_max);
+    if debug {
+        println!("Using log base {}", base);
+    }
     let partitioned_bf_size = (bf_size as usize) / partition_number;
     if debug {
         println!("In debug mode... the tool may take (much) longer than usual.");
@@ -1486,7 +1489,7 @@ fn extract_count_from_bcalm_header(header: &str) -> Result<u16, io::Error> {
         .and_then(|km_part| {
             km_part.trim_start_matches("km:f:").parse::<f32>().ok()
         })
-        .map(|float_val| float_val.round() as u16) //any value over max u16 will be clamped to the maximum possible value
+        .map(|float_val| float_val as u16) //any value over max u16 will be clamped to the maximum possible value
         .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "km:f: value not found in header or could not be parsed"))
 }
 
@@ -1496,7 +1499,7 @@ fn extract_count_from_logan_header(header: &str) -> Result<u16, io::Error> {
         .and_then(|ka_part| {
             ka_part.trim_start_matches("ka:f:").parse::<f32>().ok()
         })
-        .map(|float_val| float_val.round() as u16) 
+        .map(|float_val| float_val as u16) 
         .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "ka:f: value not found in header or could not be parsed"))
 }
 
