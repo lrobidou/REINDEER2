@@ -560,7 +560,7 @@ fn query_sequences_in_batches(
             .into_par_iter()
             // 1) Create a local HashMap in each thread
             .fold(
-                || HashMap::<String, (String, Vec<Vec<u16>>)>::new(),
+                || HashMap::<String, Vec<Vec<u16>>>::new(),
                 |mut local_results, (partition_index, kmers)| {
                     // Load the partition's Bloom filter
                     let path_bf = format!("{}/partition_bloom_filters_p{}.txt",bf_dir, partition_index);
@@ -626,9 +626,9 @@ fn query_sequences_in_batches(
                             // Accumulate results in local_results
                             let entry = local_results
                                 .entry(sequence_id.clone())
-                                .or_insert_with(|| (sequence_id.clone(), vec![Vec::new(); color_number]));
+                                .or_insert_with(|| vec![Vec::new(); color_number]);
                             for (color_idx, approx_values) in approximate_counts.into_iter().enumerate() {
-                                entry.1[color_idx].extend(approx_values);
+                                entry[color_idx].push(*approx_values.iter().min().expect("An abundance vector returned empty"));
                             }
                         }
                         
@@ -641,7 +641,7 @@ fn query_sequences_in_batches(
             )
             // 2) Reduce all local HashMaps into a single HashMap
             .reduce(
-                || HashMap::<String, (String, Vec<Vec<u16>>)>::new(),
+                || HashMap::<String, Vec<Vec<u16>>>::new(),
                 merge_results,
             );
 
@@ -659,7 +659,7 @@ fn query_sequences_in_batches(
             );
         } else {
             // Compute medians for each sequence and each color, then write them out
-            for (seq_header, (_original_header, color_vectors)) in &sequence_results {
+            for (seq_header, color_vectors) in &sequence_results {
                 for (color_idx, abund_values) in color_vectors.iter().enumerate() {
                     if !abund_values.is_empty() {
                         let mut abund_sorted = abund_values.clone();
@@ -695,17 +695,17 @@ fn query_sequences_in_batches(
 }
 
 fn merge_results(
-    mut acc: HashMap<String, (String, Vec<Vec<u16>>)>,
-    local: HashMap<String, (String, Vec<Vec<u16>>)>
-) -> HashMap<String, (String, Vec<Vec<u16>>)> {
-    for (seq_id, (header, color_vecs)) in local {
+    mut acc: HashMap<String, Vec<Vec<u16>>>,
+    local: HashMap<String, Vec<Vec<u16>>>
+) -> HashMap<String, Vec<Vec<u16>>> {
+    for (seq_id, color_vecs) in local {
         let entry = acc
             .entry(seq_id)
-            .or_insert_with(|| (header, vec![Vec::new(); color_vecs.len()]));
+            .or_insert_with(|| vec![Vec::new(); color_vecs.len()]);
 
         // Merge each color's abundances
         for (color_idx, local_abunds) in color_vecs.iter().enumerate() {
-            entry.1[color_idx].extend(local_abunds.iter().copied());
+            entry[color_idx].extend(local_abunds.iter().copied());
         }
     }
     acc
@@ -716,7 +716,7 @@ pub fn graph_coloring(
     fasta_file: &str,
     batch_size: usize,
     output_file: &str,
-    sequence_results: &HashMap<String, (String, Vec<Vec<u16>>)>,
+    sequence_results: &HashMap<String, Vec<Vec<u16>>>,
 ) -> Result<(), Box<dyn Error>> {
     let reader = read_file(fasta_file)?; // your existing read_file
     let mut writer = BufWriter::new(File::create(output_file)?);
@@ -730,7 +730,7 @@ pub fn graph_coloring(
                 .expect("Invalid UTF-8 sequence");
 
             // If the sequence is in sequence_results, we fetch the vec of vec
-            if let Some((_, color_vectors)) = sequence_results.get(&full_header) {
+            if let Some(color_vectors) = sequence_results.get(&full_header) {
                 // color_vectors is a Vec<Vec<u16>>. Each index = a color,
                 // each inner Vec<u16> = all abundance values for that color
                 // if no data, just write the original header
