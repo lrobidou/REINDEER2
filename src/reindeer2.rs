@@ -525,10 +525,10 @@ fn query_sequences_in_batches(
         // Build all partition-kmers upfront
         for record in batch {
             let id = record.id();
-            // let desc = record.desc().unwrap_or("");
+            let desc = record.desc().unwrap_or("");
             // Build the header string only once per record
-            // let full_header = format!(">{} {}", id, desc).trim().to_string();
-            let full_header = format!(">{}", id).trim().to_string();
+            let full_header = format!(">{} {}", id, desc).trim().to_string();
+            // let full_header = format!(">{}", id).trim().to_string();
 
             let seq_str = std::str::from_utf8(record.seq())
                 .map_err(|_| {
@@ -665,16 +665,16 @@ fn query_sequences_in_batches(
                         let mut abund_sorted = abund_values.clone();
                         abund_sorted.sort_unstable();
                         let median = 
-                        if abund_sorted.iter().all(|&x| x == 0) {
-                            0
-                        } else {
-                            let mid = abund_sorted.len() / 2;
-                            if abund_sorted.len() % 2 == 1 {
-                                abund_sorted[mid]
+                            if abund_sorted.iter().all(|&x| x == 0) {
+                                0
                             } else {
-                                (abund_sorted[mid - 1] + abund_sorted[mid]) / 2
-                            }
-                        };
+                                let mid = abund_sorted.len() / 2;
+                                if abund_sorted.len() % 2 == 1 {
+                                    abund_sorted[mid]
+                                } else {
+                                    (abund_sorted[mid - 1] + abund_sorted[mid]) / 2
+                                }
+                            };
                         if median > 0 {
                             let _ = writeln!(
                                 writer,
