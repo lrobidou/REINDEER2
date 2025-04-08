@@ -667,6 +667,8 @@ fn query_sequences_in_batches(
                         let median = 
                             if abund_sorted.iter().all(|&x| x == 0) {
                                 0
+                            } else if abund_sorted.len() == 1 {
+                                abund_sorted[0]
                             } else {
                                 let mid = abund_sorted.len() / 2;
                                 if abund_sorted.len() % 2 == 1 {
@@ -750,10 +752,21 @@ pub fn graph_coloring(
                         continue;
                     }
                     // compute median
-                    // TODO fix median
-                    let mut sorted_vals = vals.clone();
-                    sorted_vals.sort_unstable();
-                    let median = sorted_vals[sorted_vals.len() / 2];
+                    let mut abund_sorted = vals.clone();
+                        abund_sorted.sort_unstable();
+                        let median = 
+                            if abund_sorted.iter().all(|&x| x == 0) {
+                                0
+                            } else if abund_sorted.len() == 1 {
+                                abund_sorted[0]
+                            } else {
+                                let mid = abund_sorted.len() / 2;
+                                if abund_sorted.len() % 2 == 1 {
+                                    abund_sorted[mid]
+                                } else {
+                                    (abund_sorted[mid - 1] + abund_sorted[mid]) / 2
+                                }
+                            };
 
                     // push e.g. "col:1:12"
                     header_parts.push(format!("col:{}:{}", color_idx, median));
