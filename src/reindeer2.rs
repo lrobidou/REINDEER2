@@ -57,11 +57,11 @@ pub fn build_index(
     let (_, dir_path) = create_dir_and_files(partition_number, output_dir)?;
 
     // Shared data structures protected by Mutex for safe parallel access
-    let maybe_dense_indexes: Option<Arc<Vec<Mutex<HashMap<u64, Box<Vec<u8>>>>>>> = 
+    let maybe_dense_indexes: Option<Arc<Vec<Mutex<HashMap<u64, Vec<u8>>>>>> = 
         if dense_option {
             Some(Arc::new(
             (0..partition_number)
-                .map(|_| Mutex::new(HashMap::with_capacity(10_000_000/partition_number)))
+                .map(|_| Mutex::new(HashMap::with_capacity(200_000_000/partition_number)))
                 .collect::<Vec<_>>()
             ))
         } else {
@@ -220,7 +220,7 @@ pub fn build_index(
 
 fn process_fasta_file(
     path: &str,
-    maybe_dense_indexes: &Option<Arc<Vec<Mutex<HashMap<u64, Box<Vec<u8>>>>>>>,
+    maybe_dense_indexes: &Option<Arc<Vec<Mutex<HashMap<u64, Vec<u8>>>>>>,
     bloom_filters: &Arc<Vec<Mutex<RoaringBitmap>>>,
     k: usize,
     m: usize,
@@ -305,9 +305,8 @@ fn process_fasta_file(
                                     // create a new abundance vector for the k-mer
                                     let mut abundance_vector: Vec<u8> = Vec::with_capacity(color_number_global);
                                     abundance_vector.resize(color_number_global, 0);
-                                    let mut abundance_box: Box<Vec<u8>> = Box::from(abundance_vector);
-                                    abundance_box[path_num_global] = (log_abundance + 1) as u8;
-                                    dense_index.insert(kmer_hash, abundance_box);
+                                    abundance_vector[path_num_global] = (log_abundance + 1) as u8;
+                                    dense_index.insert(kmer_hash, abundance_vector);
                                     atomic_dense_kmers_count.fetch_add(1, atomic::Ordering::Relaxed);
                                 } else {
                                     // write the k-mer in a file of sparse k-mer from this color
@@ -444,7 +443,7 @@ fn process_fasta_record (
 }
 
 fn count_zeros(
-    abundance_vector: &Box<Vec<u8>>,
+    abundance_vector: &Vec<u8>,
     max_index: usize,
 ) -> io::Result<usize> {
     Ok(abundance_vector
@@ -1292,7 +1291,7 @@ fn _write_bloom_filters_to_disk_nochunk(
 
 fn write_dense_indexes_to_disk(
     dir_path: &str,
-    dense_indexes: &Arc<Vec<Mutex<HashMap<u64, Box<Vec<u8>>>>>>
+    dense_indexes: &Arc<Vec<Mutex<HashMap<u64, Vec<u8>>>>>
  ) -> io::Result<()> {
     for (partition, hashmap) in dense_indexes.iter().enumerate() {
         let file_path = Path::new(dir_path).join(format!("partition_dense_index_p{}.txt", partition));
