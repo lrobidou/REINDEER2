@@ -1423,6 +1423,13 @@ fn split_fof(lines: &Vec<String>) -> io::Result<(Vec<Vec<String>>, Vec<usize>)> 
     Ok((fof_chunks, chunk_sizes))
 }
 
+pub fn explore_muset_dir(dir_str: &str) -> io::Result<(String, String, usize)> {
+    let dir_path = Path::new(dir_str);
+    if !dir_path.is_dir() {
+
+    }
+}
+
 
 // --- FASTA FILES PARSING ---
 

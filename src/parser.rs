@@ -18,11 +18,12 @@ pub fn parse_args() -> ArgMatches {
                 .required(true),
         )
         .arg(
-            Arg::new("file_of_files")
-                .short('F')
-                .long("fof")
-                .value_name("FILE")
-                .help("For 'index' mode (required): Path to the input list of FASTA files (Logan format)"),
+            Arg::new("input")
+                .short('I')
+                .long("input")
+                .value_name("INPUT")
+                .help("For 'index' mode (required): By default, a file of files chere each line is the path to a FASTA file (Logan format). With (-u, --muset) set, a path to a muset
+                output directory."),
         )
         .arg(
             Arg::new("kmer")
@@ -83,6 +84,14 @@ pub fn parse_args() -> ArgMatches {
         //         .action(ArgAction::Set)
         //         .help("For 'index' mode (with --dense true): Minimum proportion of occurrence in samples for a k-mer to be considered omnipresent, 0 < T <= 1 (default: 1.0)")
         // )
+        .arg(
+            Arg::new("muset")
+                .short('u')
+                .long("muset")
+                .value_name("MUSET")
+                .action(ArgAction::Set)
+                .help("For 'index' mode: If set, the index takes as input the output directory of Muset, containing at least 'unitigs.fa' and 'unitigs.abundance.mat'")
+        )
         .arg(
             Arg::new("output_dir")
                 .short('o')

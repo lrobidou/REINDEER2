@@ -22,9 +22,9 @@ fn main() -> io::Result<()> {
     match mode.as_str() {
         "index" => {
             // PARAMETERS
-            let fof_file = matches
-                .get_one::<String>("file_of_files")
-                .expect("Required argument for FOF file in index mode");
+            let input = matches
+                .get_one::<String>("input")
+                .expect("Required argument for INPUT in index mode");
             
             let kmer = matches
                 .get_one::<String>("kmer")
@@ -60,6 +60,11 @@ fn main() -> io::Result<()> {
                 .unwrap_or(65024);
 
             let dense_option = matches
+                .get_one::<String>("dense")
+                .map(|s| s.parse::<bool>().expect("Invalid color option"))
+                .unwrap_or(false);
+
+            let muset_option = matches
                 .get_one::<String>("dense")
                 .map(|s| s.parse::<bool>().expect("Invalid color option"))
                 .unwrap_or(false);
@@ -101,26 +106,52 @@ fn main() -> io::Result<()> {
 
             let start_time = Instant::now();
 
-            // read the file of files  and extract file paths and color count
-            let (file_paths, color_nb) = read_fof_file(fof_file)?;
+            if muset_option {
 
-            let threshold = color_nb;
+                let (unitigs_file, matrix_file, color_nb) = explore_muset_dir(input)?;
 
-            // run the index construction process: build and fill BFs per partitions and in chunks, serialize, merge chunks
-            build_index(
-                file_paths,
-                kmer,
-                minimizer,
-                bf_size,
-                partitions,
-                color_nb,
-                abundance,
-                abundance_max,
-                output_dir, //pass optional output dir, todo in passed arguments
-                dense_option,
-                threshold,
-                debug,
-            )?;
+                let threshold = color_nb; // TODO invert the threshold
+
+                build_index_muset(
+                    unitigs_file,
+                    matrix_file,
+                    kmer,
+                    minimizer,
+                    bf_size,
+                    partitions,
+                    color_nb,
+                    abundance,
+                    abundance_max,
+                    output_dir,
+                    dense_option,
+                    threshold,
+                    debug,
+                )?;
+
+            } else {
+                // read the file of files  and extract file paths and color count
+                let (file_paths, color_nb) = read_fof_file(input)?;
+
+                let threshold = color_nb; // TODO invert the threshold
+
+                // run the index construction process: build and fill BFs per partitions and in chunks, serialize, merge chunks
+                build_index(
+                    file_paths,
+                    kmer,
+                    minimizer,
+                    bf_size,
+                    partitions,
+                    color_nb,
+                    abundance,
+                    abundance_max,
+                    output_dir, 
+                    dense_option,
+                    threshold,
+                    debug,
+                )?;
+            }
+
+            
 
             println!("Indexing complete in {:.2?}", start_time.elapsed());
         }
