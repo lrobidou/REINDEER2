@@ -35,14 +35,15 @@ The generale use of REINDEER 2 is divided in to steps : index building and abund
 
 For the **index** mode, the mandatory parameters are the file of files (a plain text file where each line represented a unitigs file) and the size of the k-mers to be indexed.
 
-`Reindeer2 --mode index -fof file_of_files.txt --kmer 31`
+`Reindeer2 --mode index --input file_of_files.txt --kmer 31`
 
 
 General parameters:
-- `-o, --output` an output directory for the index
+- `-o, --output-dir` an output directory for the index
 - `-a, --abundance` the abundance granularity (number of levels or discretized abundance values)
 - `-A, --abundance-max` the maximal abundance to take into account
-- `--dense` (true/false) allows to index dense k-mers - shared k-mers among datasets - more efficiently (default: false)
+- `-d, --dense` (true/false) allows to index dense k-mers - shared k-mers among datasets - more efficiently (default: false)
+- `-u, --muset` (true/false) the index takes as input the output directory of Muset, containing at least 'unitigs.fa' and 'unitigs.abundance.mat' (default: false)
 
 Advanced parameters: 
 - `-b, --bloomfilter` the Bloom filter size in log2 scale
@@ -55,7 +56,7 @@ Advanced parameters:
 
 For **query** mode, the parameters are the FASTA file containing the sequence(s) to be queried and the index directory.
 
-`Reindeer2 --mode query --fasta seqeunces_query.fa --index ~/index_directory`
+`Reindeer2 --mode query --fasta sequences_query.fa --index ~/index_directory`
 
 The `-c, --color` parameter (*true*/*false*) is used to define the query output format.
 
@@ -74,7 +75,7 @@ To illustrate how the tool works, a small example is available. The commands are
 #### INDEX
 How to build the index:
 ```
-Reindeer2 --mode index --fof test_files/fof.txt --kmer 31 -output ../index_test
+Reindeer2 --mode index --fof test_files/fof.txt --kmer 31 --output-dir ../index_test
 ```
 
 #### QUERY (results: CSV)

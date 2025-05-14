@@ -1,7 +1,7 @@
 mod reindeer2;
 mod parser;
 
-use crate::reindeer2::{build_index, query_index, read_fof_file};
+use crate::reindeer2::{build_index, build_index_muset, query_index, read_fof_file, explore_muset_dir};
 use crate::parser::parse_args;
 
 use std::io::{self};
@@ -65,7 +65,7 @@ fn main() -> io::Result<()> {
                 .unwrap_or(false);
 
             let muset_option = matches
-                .get_one::<String>("dense")
+                .get_one::<String>("muset")
                 .map(|s| s.parse::<bool>().expect("Invalid color option"))
                 .unwrap_or(false);
 

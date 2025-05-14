@@ -215,6 +215,221 @@ pub fn build_index(
     Ok((file_paths, dir_path))
 }
 
+pub fn build_index_muset(
+    unitigs_file: String, 
+    matrix_file: String, 
+    kmer_size: usize, 
+    minimizer_size: usize, 
+    bf_size: u64,
+    partition_number: usize,
+    color_nb: usize,
+    abundance_number: usize,
+    abundance_max: u16,
+    output_dir: &String,
+    dense_option: bool,
+    threshold: usize,
+    debug: bool,
+) -> io::Result<(Vec<String>, String)> {
+    let mut total_kmers = atomic::AtomicU64::new(0);
+    let mut atomic_dense_kmers_count = atomic::AtomicU64::new(0);
+    let mut atomic_sparse_kmers_count = atomic::AtomicU64::new(0);
+    let mut atomic_sparse_one_seen = atomic::AtomicU64::new(0);
+    let mut atomic_sparse_fp_seen = atomic::AtomicU64::new(0);
+    let base = compute_base(abundance_number, abundance_max);
+    let max_map_size = 1_000_000;
+    if debug {
+        println!("Using log base {}", base);
+    }
+    let partitioned_bf_size = (bf_size as usize) / partition_number;
+    if debug {
+        println!("In debug mode... the tool may take (much) longer than usual.");
+    }
+    println!("Initializing Bloom filter slices...");
+
+    let (_, dir_path) = create_dir_and_files(partition_number, output_dir)?;
+
+    // Shared data structures protected by Mutex for safe parallel access
+    let maybe_dense_indexes: Option<Arc<Vec<Mutex<HashMap<u64, Vec<u8>>>>>> = 
+        if dense_option {
+            Some(Arc::new(
+            (0..partition_number)
+                .map(|_| Mutex::new(HashMap::with_capacity(200_000_000/partition_number)))
+                .collect::<Vec<_>>()
+            ))
+        } else {
+            None
+        };
+
+    let bloom_filters = Arc::new(
+        (0..partition_number)
+            .map(|_| Mutex::new(RoaringBitmap::new()))
+            .collect::<Vec<_>>()
+    );
+
+    let unitigs_reader = match read_file(&unitigs_file) {
+        Ok(r) => r,
+        Err(e) => {
+            panic!("Failed to open file {}: {}", unitigs_file, e);
+        }
+    };
+    let matrix_reader = match read_file(&matrix_file) {
+        Ok(r) => r,
+        Err(e) => {
+            panic!("Failed to open file {}: {}", matrix_file, e);
+        }
+    };
+    let len_matrix = matrix_reader.lines().count();
+    let len_unitigs = unitigs_reader.lines().count();
+    if len_matrix * 2 != len_unitigs {
+        panic!("The number of unitigs doesn't match the matrix size.");
+    }
+
+    let mut matrix_lines = read_file(&matrix_file)?.lines();
+    let mut unitigs_lines = read_file(&unitigs_file)?.lines();
+
+    let mut partition_kmers: HashMap<usize, Vec<(u64, u16, usize, usize)>> = HashMap::new(); // keep kmer info to fill BFs
+
+    for _ in 0..len_matrix {
+        let abundance_line = matrix_lines.next().unwrap().unwrap();
+        let mut abundance_iter = abundance_line.trim().split(" ").into_iter();
+        let unitig_id: &str = abundance_iter.next().unwrap();
+
+        let abundance_vector_plusone = abundance_iter.map(|ab_value_str| {
+            let ab_value = ab_value_str.parse::<f64>().expect("Failed to parse the abundance values in the matrix") as u16;
+            if ab_value == 0 {
+                0 as u8
+            } else {
+                (compute_log_abundance(
+                    ab_value,
+                    base,
+                    abundance_max) + 1) as u8
+            }})
+            .collect::<Vec<u8>>();
+
+        let tmp_abundance_vector = abundance_vector_plusone.clone();
+        let number_of_zeros: usize = tmp_abundance_vector.into_iter().filter(|x| *x == 0).count();
+
+        let unitig_line = unitigs_lines.next().unwrap().unwrap();
+        if &unitig_line.split(" ").next().unwrap()[1..] != unitig_id {
+            println!("{} vs {}", &unitig_line.split(" ").next().unwrap()[1..], unitig_id);
+            panic!("The unitig id dooesn't match between the unitigs file and the matrix file.")
+        }
+
+        let unitig_line = unitigs_lines.next().unwrap().unwrap();
+        let seq_str = unitig_line.trim();
+        for (kmer_hash, minimizer) in kmer_minimizers_seq_level(seq_str.as_bytes(), kmer_size, minimizer_size) { 
+            let partition_index = (minimizer % (partition_number as u64)) as usize;
+            let new_kmers_added = (abundance_vector_plusone.len() - number_of_zeros) as u64;
+            total_kmers.fetch_add(new_kmers_added, atomic::Ordering::Relaxed);
+            
+            if dense_option && number_of_zeros <= threshold {
+                match &maybe_dense_indexes {
+                    Some(dense_indexes) => {
+                        let mut dense_index = dense_indexes[partition_index] 
+                            .lock()
+                            .expect("Failed to lock the dense index");
+                        atomic_dense_kmers_count.fetch_add(new_kmers_added, atomic::Ordering::Relaxed);
+                        dense_index.insert(kmer_hash, abundance_vector_plusone.clone());
+                    },
+                    None => panic!("Failed to build the dense index.")
+                }
+            } else {
+                atomic_sparse_kmers_count.fetch_add(new_kmers_added, atomic::Ordering::Relaxed);
+                let kmers_entry = partition_kmers // separate the kmers per partition
+                    .entry(partition_index)
+                    .or_insert_with(Vec::new);
+
+                for (path_num, log_plusone) in abundance_vector_plusone.iter().enumerate() {
+                    let real_log_abundance = (log_plusone - 1) as u16;
+                    if real_log_abundance > 0 {
+                        kmers_entry.push((
+                            kmer_hash,
+                            real_log_abundance,
+                            path_num,
+                            0 // chunk index
+                        ))
+                    }
+                }
+
+            }
+            if partition_kmers.len() >= max_map_size {
+                flush_map_into_bfs(&mut partition_kmers, &bloom_filters, partitioned_bf_size, color_nb, abundance_number)?;
+            }
+        }
+    }
+    // Index remaining kmers
+    flush_map_into_bfs(&mut partition_kmers, &bloom_filters, partitioned_bf_size, color_nb, abundance_number)?;
+        
+
+        
+
+
+        
+
+    if debug {
+        update_sparse_counts(&bloom_filters, &atomic_sparse_one_seen, &atomic_sparse_fp_seen, abundance_number)?;
+    }
+    if let Err(e) = write_bloom_filters_to_disk(
+        &dir_path, 
+        &bloom_filters,
+        &vec![color_nb],
+        partition_number,
+        0
+    ) {
+        eprintln!("Error writing Bloom filters on disk: {}", e);
+    }
+
+    // After processing all chunks, write the dense indexes to disk
+    match maybe_dense_indexes {
+        Some(dense_indexes) => {
+            write_dense_indexes_to_disk(&dir_path, &dense_indexes)?;
+        },
+        None => (),
+    }
+
+    if debug {
+        // k-mers repartition between dense and sparse index
+        println!("The index contains {:?} 'dense' k-mers and {:?} 'sparse' k-mers (total k-mers: {:?})", 
+            atomic_dense_kmers_count.get_mut().separate_with_commas(), 
+            atomic_sparse_kmers_count.get_mut().separate_with_commas(), 
+            total_kmers.get_mut().separate_with_commas());
+
+        let ones = atomic_sparse_one_seen.get_mut();
+        let silent = *atomic_sparse_kmers_count.get_mut() - *ones;
+        let fp = atomic_sparse_fp_seen.get_mut();
+        // k-mers indexed in the sparse index, FP silent and FP seen
+        println!("Among the {:?} k-mers added in the 'sparse' index, {:?} encountered hash collisions ({:?} silent and {:?} misleading).", 
+            atomic_sparse_kmers_count.get_mut().separate_with_commas(), 
+            (silent+*fp).separate_with_commas(),
+            silent.separate_with_commas(), 
+            fp.separate_with_commas());
+    }
+    
+
+    // Merge the chunk-based bloom filters, if needed
+    // If there was only one chunk, rename files directly
+    for partition_idx in 0..partition_number {
+        let input_path = format!("{}/partition_bloom_filters_c0_p{}.txt", dir_path, partition_idx);
+        let output_path = format!("{}/partition_bloom_filters_p{}.txt", dir_path, partition_idx);
+        std::fs::rename(&input_path, &output_path)?;
+    }
+
+    // write partition info to a CSV or your desired format
+    let _ = write_partition_to_csv(
+        &dir_path,
+        kmer_size,
+        minimizer_size,
+        bf_size,
+        partition_number,
+        color_nb,
+        abundance_number,
+        abundance_max,
+        dense_option,
+    );
+
+    Ok((vec!["".to_string()], dir_path))
+}
+
 
 // --- INDEX FUNCTIONS ---
 
@@ -278,11 +493,7 @@ fn process_fasta_file(
                 Ok((seq, log_abundance)) => {
                     atomic_record_count.fetch_add(1, atomic::Ordering::Relaxed);
                     let seq_str = std::str::from_utf8(&seq).expect("Invalid UTF-8 sequence");
-                    //let nt_hash_iterator = NtHashIterator::new(seq_str.as_bytes(), k).unwrap();// for kmer's position in BF (rolling on whole sequence)
-                    //let min_iter = MinimizerBuilder::<u64>::new() // for minimizers (computed at once on the sequence)
-                    //    .minimizer_size(m)
-                    //    .width((k - m + 1).try_into().unwrap())
-                    //    .iter(seq_str.as_bytes());
+
                     for (kmer_hash, minimizer) in kmer_minimizers_seq_level(seq_str.as_bytes(), k, m) {
                         //for (kmer_hash, (minimizer, _)) in nt_hash_iterator.zip(min_iter) { // iterate on both minimizer and hash for each kmer
                         let partition_index = (minimizer % (partition_number as u64)) as usize;
@@ -291,8 +502,8 @@ fn process_fasta_file(
                         match maybe_dense_indexes {
                             Some(dense_indexes) => {
                                 let mut dense_index = dense_indexes[partition_index] 
-                                .lock()
-                                .expect("Failed to lock bloom filter");
+                                    .lock()
+                                    .expect("Failed to lock the dense index");
     
                                 // write in the dense index if the k-mer can be dense, else, put it in the hashmap for sparses
                                 if dense_index.contains_key(&kmer_hash) {
@@ -1210,6 +1421,35 @@ fn update_sparse_counts(
     Ok(())
 }
 
+fn flush_map_into_bfs (
+    partition_kmers: &mut HashMap<usize, Vec<(u64, u16, usize, usize)>>,
+    bloom_filters: &Arc<Vec<Mutex<RoaringBitmap>>>,
+    partitioned_bf_size: usize,
+    color_number: usize,
+    abundance_number: usize,
+) -> io::Result<()> {
+    // this part fills the BFs per paritition
+    for (partition_index, kmers) in partition_kmers.drain() {// iterates and empties the hash map when needed
+        let mut kmer_hashes_to_update = Vec::new();
+        for (kmer_hash, log_abundance, path_num, _chunk_index) in kmers { // select the bit in the BF
+            let position = compute_location_filter(
+                kmer_hash,
+                partitioned_bf_size,
+                color_number,
+                path_num,
+                abundance_number,
+                log_abundance,
+            );
+            kmer_hashes_to_update.push(position as u32); // accumulate bits to be modified for this bf
+        }
+        let mut bloom_filter = bloom_filters[partition_index] // select the correct BF for the given partition
+            .lock()
+            .expect("Failed to lock bloom filter");
+        bloom_filter.extend(kmer_hashes_to_update);
+    };
+    Ok(())
+}
+
 
 // --- WRITE INDEX ON DISK ---
 
@@ -1426,8 +1666,22 @@ fn split_fof(lines: &Vec<String>) -> io::Result<(Vec<Vec<String>>, Vec<usize>)> 
 pub fn explore_muset_dir(dir_str: &str) -> io::Result<(String, String, usize)> {
     let dir_path = Path::new(dir_str);
     if !dir_path.is_dir() {
-
+        panic!("{} is not a directory", dir_str);
     }
+    let unitigs_path = dir_path.join("unitigs.fa");
+    if !unitigs_path.exists() {
+        panic!("File not found : {:#?}", unitigs_path);
+    }
+    let abundance_path = dir_path.join("unitigs.abundance.mat");
+    if !abundance_path.exists() {
+        panic!("File not found : {:#?}", abundance_path);
+    }
+
+    let reader = BufReader::new(File::open(&abundance_path).expect(&format!("Failed to open {:#?}", abundance_path)));
+    let err = &format!("Failed to read {:#?}", abundance_path);
+    let firstline = reader.lines().next().expect(err).expect(err);
+    let color_nb = firstline.split("\t").into_iter().map(|e| e).collect::<Vec<&str>>().len() - 1;
+    Ok((unitigs_path.to_string_lossy().to_string(), abundance_path.to_string_lossy().to_string(), color_nb))
 }
 
 
