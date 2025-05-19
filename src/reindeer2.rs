@@ -43,6 +43,7 @@ pub fn build_index(
     let mut atomic_sparse_kmers_count = atomic::AtomicU64::new(0);
     let mut atomic_sparse_one_seen = atomic::AtomicU64::new(0);
     let mut atomic_sparse_fp_seen = atomic::AtomicU64::new(0);
+    let kmer_counts_vector: Arc<Mutex<Vec<usize>>> = Arc::new(Mutex::new(vec![color_nb, 0]));
     let (chunks, color_chunks) = split_fof(&file_paths)?;
     let base = compute_base(abundance_number, abundance_max);
     if debug {
@@ -124,6 +125,7 @@ pub fn build_index(
                                 &total_kmers,
                                 &atomic_dense_kmers_count,
                                 &atomic_sparse_kmers_count,
+                                &kmer_counts_vector,
                             ) {
                                 eprintln!("Error processing {}: {}", path, e);
                             }
@@ -160,6 +162,8 @@ pub fn build_index(
         None => (),
     }
 
+    write_kmer_counts_to_disk(&dir_path, &kmer_counts_vector)?;
+
     if debug {
         // k-mers repartition between dense and sparse index
         println!("The index contains {:?} 'dense' k-mers and {:?} 'sparse' k-mers (total k-mers: {:?})", 
@@ -177,7 +181,6 @@ pub fn build_index(
             silent.separate_with_commas(), 
             fp.separate_with_commas());
     }
-    
 
     // Merge the chunk-based bloom filters, if needed
     if chunks.len() > 1 {
@@ -235,6 +238,7 @@ pub fn build_index_muset(
     let mut atomic_sparse_kmers_count = atomic::AtomicU64::new(0);
     let mut atomic_sparse_one_seen = atomic::AtomicU64::new(0);
     let mut atomic_sparse_fp_seen = atomic::AtomicU64::new(0);
+    let kmer_counts_vector: Arc<Mutex<Vec<usize>>> = Arc::new(Mutex::new(vec![color_nb, 0]));
     let base = compute_base(abundance_number, abundance_max);
     let max_map_size = 1_000_000;
     if debug {
@@ -289,16 +293,18 @@ pub fn build_index_muset(
 
     let mut partition_kmers: HashMap<usize, Vec<(u64, u16, usize, usize)>> = HashMap::new(); // keep kmer info to fill BFs
 
+    let mut kmer_counts_vector_locked = kmer_counts_vector.lock().expect("Failed to lock the kmer counter hashmap");
     for _ in 0..len_matrix {
         let abundance_line = matrix_lines.next().unwrap().unwrap();
         let mut abundance_iter = abundance_line.trim().split(" ").into_iter();
         let unitig_id: &str = abundance_iter.next().unwrap();
 
-        let abundance_vector_plusone = abundance_iter.map(|ab_value_str| {
+        let abundance_vector_plusone = abundance_iter.enumerate().map(|(i, ab_value_str)| {
             let ab_value = ab_value_str.parse::<f64>().expect("Failed to parse the abundance values in the matrix") as u16;
             if ab_value == 0 {
                 0 as u8
             } else {
+                kmer_counts_vector_locked[i] += 1; // select the count corresponding to the right color
                 (compute_log_abundance(
                     ab_value,
                     base,
@@ -387,6 +393,8 @@ pub fn build_index_muset(
         None => (),
     }
 
+    write_kmer_counts_to_disk(&dir_path, &kmer_counts_vector)?;
+
     if debug {
         // k-mers repartition between dense and sparse index
         println!("The index contains {:?} 'dense' k-mers and {:?} 'sparse' k-mers (total k-mers: {:?})", 
@@ -455,8 +463,10 @@ fn process_fasta_file(
     total_kmers: &atomic::AtomicU64,
     atomic_dense_kmers_count: &atomic::AtomicU64,
     atomic_sparse_kmers_count: &atomic::AtomicU64,
+    kmer_counts_vector: &Arc<Mutex<Vec<usize>>>,
 ) -> io::Result<()> {
     let atomic_record_count = atomic::AtomicU64::new(0);
+    let mut kmer_count: usize = 0;
     let reader = read_file(path)?;
 
     // this part fills the BFs per paritition
@@ -490,11 +500,12 @@ fn process_fasta_file(
         for record in batch {
             let processed = process_fasta_record(Ok(record), base, abundance_max, &header_type); //read fasta
             match processed {
-                Ok((seq, log_abundance)) => {
+                Ok((seq, log_abundance, count_value)) => {
                     atomic_record_count.fetch_add(1, atomic::Ordering::Relaxed);
                     let seq_str = std::str::from_utf8(&seq).expect("Invalid UTF-8 sequence");
 
                     for (kmer_hash, minimizer) in kmer_minimizers_seq_level(seq_str.as_bytes(), k, m) {
+                        kmer_count += count_value as usize;
                         //for (kmer_hash, (minimizer, _)) in nt_hash_iterator.zip(min_iter) { // iterate on both minimizer and hash for each kmer
                         let partition_index = (minimizer % (partition_number as u64)) as usize;
                         total_kmers.fetch_add(1, atomic::Ordering::Relaxed);
@@ -604,6 +615,10 @@ fn process_fasta_file(
         },
         None => (),
     }
+    kmer_counts_vector 
+        .lock()
+        .expect("Failed to lock the counts vector")
+        [color_number_global] = kmer_count; // add the kmer count
     Ok(())
 }
 
@@ -638,7 +653,7 @@ fn process_fasta_record (
     base: f64,
     abundance_max: u16,
     header_type: &HeaderType, 
-) -> Result<(Vec<u8>, u16), io::Error> {
+) -> Result<(Vec<u8>, u16, u16), io::Error> {
     let record = result.expect("error during fasta parsing");
     let header_option = record.desc();
     let header = header_option.unwrap_or("no header found");
@@ -650,7 +665,7 @@ fn process_fasta_record (
     // compute the lossy abundance value
     let log_abundance = compute_log_abundance(count_value, base, abundance_max);
     let seq = record.seq().to_vec();
-    Ok((seq, log_abundance))
+    Ok((seq, log_abundance, count_value))
 }
 
 fn count_zeros(
@@ -675,6 +690,7 @@ pub fn query_index(
     bf_dir: &str,
     output_file: &str,
     color_graph: bool,
+    normalize_option: bool,
 ) -> io::Result<()> {
     //load index metadata from CSV
     let (k, m, bf_size, partition_number, color_number, abundance_number, abundance_max, dense_option) =
@@ -696,6 +712,7 @@ pub fn query_index(
         &output_file,
         color_graph,
         dense_option,
+        normalize_option,
     )?;
     println!("Writing results in {}", output_file);
     //write_query_results_to_csv(&query_results, bf_dir)
@@ -719,6 +736,7 @@ fn query_sequences_in_batches(
     output_file: &str,
     color_graph: bool,
     dense_option: bool,
+    normalize_option: bool,
 ) -> io::Result<()> {
     let reader = read_file(fasta_file)?;
     let mut writer = BufWriter::new(File::create(output_file)?);
@@ -765,7 +783,7 @@ fn query_sequences_in_batches(
 
         // --- PARALLEL PHASE: process each partition's k-mers in parallel ---
         // This will store final results for *all* sequences in this batch.
-        // Key: sequence header; Value: vector of (color, abundance)
+        // Key: sequence header; Value: vector of vector of abundances
         let sequence_results = partition_kmers
             .into_par_iter()
             // 1) Create a local HashMap in each thread
@@ -868,6 +886,11 @@ fn query_sequences_in_batches(
                 &sequence_results
             );
         } else {
+            let kmer_counts = if normalize_option {
+                load_kmer_counts_vector(&bf_dir).expect("Failed to load from disk the kmer counts vector")
+            } else {
+                vec![color_number, 0]
+            };
             // Compute medians for each sequence and each color, then write them out
             for (seq_header, color_vectors) in &sequence_results {
                 for (color_idx, abund_values) in color_vectors.iter().enumerate() {
@@ -888,6 +911,11 @@ fn query_sequences_in_batches(
                                 }
                             };
                         if median > 0 {
+                            let median = if normalize_option {
+                                median as usize / kmer_counts[color_idx] * 1_000_000
+                            } else {
+                                median as usize
+                            };
                             let _ = writeln!(
                                 writer,
                                 "{},{},{}",
@@ -1545,6 +1573,20 @@ fn write_dense_indexes_to_disk(
     Ok(())
 }
 
+fn write_kmer_counts_to_disk(
+    dir_path: &str,
+    kmer_counts_vector: &Arc<Mutex<Vec<usize>>>,
+ ) -> io::Result<()> {
+    let file_path = Path::new(dir_path).join("kmer_counts_per_color.txt");
+    let file = File::create(&file_path)?;
+    let mut writer = BufWriter::new(file);
+    let mut locked_vector = kmer_counts_vector.lock().unwrap();
+    let binary_encoded = bincode::serialize(&locked_vector.clone()).unwrap();
+    writer.write_all(&binary_encoded)?;
+    locked_vector.clear();
+    Ok(())
+}
+
 fn write_partition_to_csv(
     bf_dir: &str,
     k: usize,
@@ -1621,6 +1663,17 @@ fn read_partition_from_csv(bf_dir: &str, output_csv: &str) -> io::Result<(usize,
     let dense_option = values[7].parse().unwrap_or(false);
 
     Ok((k, m, bf_size, partition_number, color_number, abundance_number, abundance_max, dense_option))
+}
+
+fn load_kmer_counts_vector(dir_path: &str) -> io::Result<Vec<usize>> {
+    let mut file = File::open(&Path::new(dir_path).join("kmer_counts_per_color.txt"))?;
+
+    // Read the rest of the file to deserialize the hashmap
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+    let counts_vector = bincode::deserialize_from(&buffer[..])
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Failed to deserialize the counts vector"))?;
+    Ok(counts_vector)
 }
 
 
@@ -2361,7 +2414,7 @@ mod tests {
         let processed = process_fasta_record(result, base, 65535, &HeaderType::Logan);
 
         assert!(processed.is_ok(), "processing failed");
-        let (seq, log_abundance) = processed.unwrap();
+        let (seq, log_abundance, _) = processed.unwrap();
         let expected_seq = b"AGGAGTAGATACCAGAGATAACGATACAGGTGCGA".to_vec();
         let expected_log_abundance = 1; // log2(3) rounds to 1
 
@@ -2555,7 +2608,7 @@ mod tests {
     
         let query_results_path = format!("{}/query_results.csv", index_dir);
         
-        query_index(&file1_path, &index_dir, &query_results_path, false)
+        query_index(&file1_path, &index_dir, &query_results_path, false, false)
             .expect("Failed to query sequences");
     
         let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
@@ -2647,7 +2700,7 @@ mod tests {
     
         let query_results_path = format!("{}/query_results.csv", index_dir);
         
-        query_index(&file1_path, &index_dir, &query_results_path, false)
+        query_index(&file1_path, &index_dir, &query_results_path, false, false)
             .expect("Failed to query sequences");
     
         let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
@@ -2748,7 +2801,7 @@ mod tests {
     
         let query_results_path = format!("{}/query_results.csv", index_dir);
         
-        query_index(&file1_path, &index_dir, &query_results_path, false)
+        query_index(&file1_path, &index_dir, &query_results_path, false, false)
             .expect("Failed to query sequences");
     
         let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
@@ -2846,7 +2899,7 @@ mod tests {
     
         let query_results_path = format!("{}/query_results.csv", index_dir);
         
-        query_index(&file1_path, &index_dir, &query_results_path, false)
+        query_index(&file1_path, &index_dir, &query_results_path, false, false)
             .expect("Failed to query sequences");
     
         let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
@@ -2945,7 +2998,7 @@ mod tests {
 
         let query_results_path = format!("{}/query_results.csv", index_dir);
 
-        query_index(&file2_path, &index_dir, &query_results_path, false)
+        query_index(&file2_path, &index_dir, &query_results_path, false, false)
             .expect("Failed to query sequences");
 
         // Validate the results written to the query results CSV file
@@ -3037,7 +3090,7 @@ mod tests {
 
         let query_results_path = format!("{}/query_results.csv", index_dir);
 
-        query_index(&file2_path, &index_dir, &query_results_path, false)
+        query_index(&file2_path, &index_dir, &query_results_path, false, false)
             .expect("Failed to query sequences");
 
         // Validate the results written to the query results CSV file
@@ -3139,7 +3192,7 @@ mod tests {
         fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p3.txt", "test_files_bq2/partitioned_bloom_filters_p3.txt");
         */
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file2_path, &test_dir, &query_results_path, false) // query sequences from file1
+        query_index(&file2_path, &test_dir, &query_results_path, false, false) // query sequences from file1
             .expect("Failed to query sequences");
 
         
@@ -3245,7 +3298,7 @@ mod tests {
         fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p3.txt", "test_files_bq2/partitioned_bloom_filters_p3.txt");
         */
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file2_path, &test_dir, &query_results_path, false) // query sequences from file1
+        query_index(&file2_path, &test_dir, &query_results_path, false, false) // query sequences from file1
             .expect("Failed to query sequences");
 
         
@@ -3350,7 +3403,7 @@ mod tests {
         fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
         */
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file1_path, &test_dir, &query_results_path, false) // query sequences from file1
+        query_index(&file1_path, &test_dir, &query_results_path, false, false) // query sequences from file1
             .expect("Failed to query sequences");
 
         
@@ -3457,7 +3510,7 @@ mod tests {
         fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
         */
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file1_path, &test_dir, &query_results_path, false) // query sequences from file1
+        query_index(&file1_path, &test_dir, &query_results_path, false, false) // query sequences from file1
             .expect("Failed to query sequences");
 
         
@@ -3558,7 +3611,7 @@ mod tests {
         fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
         */
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file1_path, &test_dir, &query_results_path, false) // query sequences from file1
+        query_index(&file1_path, &test_dir, &query_results_path, false, false) // query sequences from file1
             .expect("Failed to query sequences");
 
        
@@ -3658,7 +3711,7 @@ mod tests {
         fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
         */
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file1_path, &test_dir, &query_results_path, false) // query sequences from file1
+        query_index(&file1_path, &test_dir, &query_results_path, false, false) // query sequences from file1
             .expect("Failed to query sequences");
 
        
@@ -3966,7 +4019,7 @@ mod tests {
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
 
-        query_index(&file1_path, &test_dir, &query_results_path, false)
+        query_index(&file1_path, &test_dir, &query_results_path, false, false)
             .expect("Failed to query sequences");
 
         let mut reader =
@@ -4130,7 +4183,7 @@ mod tests {
         )
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file6_path, &test_dir, &query_results_path, false)
+        query_index(&file6_path, &test_dir, &query_results_path, false, false)
             .expect("Failed to query sequences");
 
        
@@ -4255,7 +4308,7 @@ mod tests {
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
 
-        query_index(&file5_path, &test_dir, &query_results_path, false)
+        query_index(&file5_path, &test_dir, &query_results_path, false, false)
             .expect("Failed to query sequences");
 
         let mut reader =
@@ -4384,7 +4437,7 @@ mod tests {
         )
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file5_path, &test_dir, &query_results_path, false)
+        query_index(&file5_path, &test_dir, &query_results_path, false, false)
             .expect("Failed to query sequences");
 
         
@@ -4596,7 +4649,7 @@ mod tests {
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
 
-        query_index(&file2_path, &test_dir, &query_results_path, false)
+        query_index(&file2_path, &test_dir, &query_results_path, false, false)
             .expect("Failed to query sequences");
 
         let mut reader =
@@ -4685,6 +4738,7 @@ mod tests {
             test_dir,
             &output_path,
             true, //  graph coloring
+            false,
         )
         .expect("Failed to color graph");
 

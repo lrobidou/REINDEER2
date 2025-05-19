@@ -1,6 +1,12 @@
 # REINDEER 2
 
-REINDEER 2 is an efficiant and scalable k-mer abundance index.
+REINDEER 2 is an efficient and scalable k-mer abundance index.
+
+## Pre-processing
+
+As REINDEER 2 only indexes unitig files, a pre-processing step is necessary. This can be done using assembly tools such as [GGCAT](https://github.com/algbio/ggcat).
+
+For public datasets, the sequencing files may already have been processed into unitigs by the [Logan project](https://github.com/IndexThePlanet/Logan). These files are freely available and can be downloaded by following [these steps](https://github.com/IndexThePlanet/Logan/blob/main/Accessions.md).   
 
 ## Installation
 
@@ -59,6 +65,7 @@ For **query** mode, the parameters are the FASTA file containing the sequence(s)
 `Reindeer2 --mode query --fasta sequences_query.fa --index ~/index_directory`
 
 The `-c, --color` parameter (*true*/*false*) is used to define the query output format.
+Additionnaly, the `-n, --normalize` parameter allows to normalize abundances based on sequencing depth estimates.
 
 #### CSV file with --color false (default)
 

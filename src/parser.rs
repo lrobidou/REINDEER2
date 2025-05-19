@@ -121,6 +121,13 @@ pub fn parse_args() -> ArgMatches {
                 .help("For 'query' mode: bool for coloring a graph instead of regular query (default: false)\n"),
         )
         .arg(
+            Arg::new("normalize")
+                .short('n')
+                .long("normalize")
+                .value_name("NORMALIZE")
+                .help("For 'query' mode: bool for normalizing abundances based on sequencing depth estimates (default: false)\n"),
+        )
+        .arg(
             Arg::new("debug")
                 .long("debug")
                 .value_name("DEBUG")
