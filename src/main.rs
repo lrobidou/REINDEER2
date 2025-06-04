@@ -64,10 +64,10 @@ fn main() -> io::Result<()> {
                 .map(|s| s.parse::<bool>().expect("Invalid color option"))
                 .unwrap_or(false);
 
-            let muset_option = matches
-                .get_one::<String>("muset")
-                .map(|s| s.parse::<bool>().expect("Invalid color option"))
-                .unwrap_or(false);
+            // let muset_option = matches
+            //     .get_one::<String>("muset")
+            //     .map(|s| s.parse::<bool>().expect("Invalid color option"))
+            //     .unwrap_or(false);
 
             // TODO add threads
 
@@ -106,7 +106,7 @@ fn main() -> io::Result<()> {
 
             let start_time = Instant::now();
 
-            if muset_option {
+            if false { //muset_option {
 
                 let (unitigs_file, matrix_file, color_nb) = explore_muset_dir(input)?;
 

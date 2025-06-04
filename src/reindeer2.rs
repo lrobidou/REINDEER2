@@ -43,7 +43,7 @@ pub fn build_index(
     let mut atomic_sparse_kmers_count = atomic::AtomicU64::new(0);
     let mut atomic_sparse_one_seen = atomic::AtomicU64::new(0);
     let mut atomic_sparse_fp_seen = atomic::AtomicU64::new(0);
-    let kmer_counts_vector: Arc<Mutex<Vec<usize>>> = Arc::new(Mutex::new(vec![color_nb, 0]));
+    let kmer_counts_vector: Arc<Mutex<Vec<usize>>> = Arc::new(Mutex::new(vec![0; color_nb]));
     let (chunks, color_chunks) = split_fof(&file_paths)?;
     let base = compute_base(abundance_number, abundance_max);
     if debug {
@@ -618,7 +618,7 @@ fn process_fasta_file(
     kmer_counts_vector 
         .lock()
         .expect("Failed to lock the counts vector")
-        [color_number_global] = kmer_count; // add the kmer count
+        [path_num_global] = kmer_count; // add the kmer count
     Ok(())
 }
 
