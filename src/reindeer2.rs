@@ -918,9 +918,9 @@ fn query_sequences_in_batches(
                             };
                         if median > 0 {
                             let median = if normalize_option {
-                                median as usize / kmer_counts[color_idx] * 1_000_000
+                                median as f64 / kmer_counts[color_idx] as f64 * 1_000_000 as f64
                             } else {
-                                median as usize
+                                median as f64
                             };
                             let _ = writeln!(
                                 writer,
