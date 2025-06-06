@@ -697,6 +697,7 @@ pub fn query_index(
     output_file: &str,
     color_graph: bool,
     normalize_option: bool,
+    coverage: f32,
 ) -> io::Result<()> {
     //load index metadata from CSV
     let (k, m, bf_size, partition_number, color_number, abundance_number, abundance_max, dense_option) =
@@ -719,6 +720,7 @@ pub fn query_index(
         color_graph,
         dense_option,
         normalize_option,
+        coverage,
     )?;
     println!("Writing results in {}", output_file);
     //write_query_results_to_csv(&query_results, bf_dir)
@@ -743,6 +745,7 @@ fn query_sequences_in_batches(
     color_graph: bool,
     dense_option: bool,
     normalize_option: bool,
+    coverage: f32,
 ) -> io::Result<()> {
     let reader = read_file(fasta_file)?;
     let mut writer = BufWriter::new(File::create(output_file)?);
@@ -901,34 +904,45 @@ fn query_sequences_in_batches(
             for (seq_header, color_vectors) in &sequence_results {
                 for (color_idx, abund_values) in color_vectors.iter().enumerate() {
                     if !abund_values.is_empty() {
-                        let mut abund_sorted = abund_values.clone();
-                        abund_sorted.sort_unstable();
-                        let median = 
-                            if abund_sorted.iter().all(|&x| x == 0) {
-                                0
-                            } else if abund_sorted.len() == 1 {
-                                abund_sorted[0]
+                        let mut zeros_count = 0;
+                        let mut non_zero_values: Vec<u16> = Vec::new();
+                        abund_values.iter().for_each(|value|
+                            if *value == 0 {
+                                zeros_count += 1;
                             } else {
-                                let mid = abund_sorted.len() / 2;
-                                if abund_sorted.len() % 2 == 1 {
-                                    abund_sorted[mid]
+                                non_zero_values.push(*value);
+                            }
+                        );
+                        if !non_zero_values.is_empty() && (((zeros_count as f32) / (abund_values.len() as f32)) < coverage) {
+                            let mut abund_sorted = non_zero_values.clone();
+                            abund_sorted.sort_unstable();
+                            let median = 
+                                if abund_sorted.iter().all(|&x| x == 0) {
+                                    0
+                                } else if abund_sorted.len() == 1 {
+                                    abund_sorted[0]
                                 } else {
-                                    (abund_sorted[mid - 1] + abund_sorted[mid]) / 2
-                                }
-                            };
-                        if median > 0 {
-                            let median = if normalize_option {
-                                median as f64 / kmer_counts[color_idx] as f64 * 1_000_000 as f64
-                            } else {
-                                median as f64
-                            };
-                            let _ = writeln!(
-                                writer,
-                                "{},{},{}",
-                                seq_header,
-                                color_idx,
-                                median
-                            );
+                                    let mid = abund_sorted.len() / 2;
+                                    if abund_sorted.len() % 2 == 1 {
+                                        abund_sorted[mid]
+                                    } else {
+                                        (abund_sorted[mid - 1] + abund_sorted[mid]) / 2
+                                    }
+                                };
+                            if median > 0 {
+                                let median = if normalize_option {
+                                    median as f64 / kmer_counts[color_idx] as f64 * 1_000_000 as f64
+                                } else {
+                                    median as f64
+                                };
+                                let _ = writeln!(
+                                    writer,
+                                    "{},{},{}",
+                                    seq_header,
+                                    color_idx,
+                                    median
+                                );
+                            }
                         }
                     }
                 }
@@ -2614,7 +2628,7 @@ mod tests {
     
         let query_results_path = format!("{}/query_results.csv", index_dir);
         
-        query_index(&file1_path, &index_dir, &query_results_path, false, false)
+        query_index(&file1_path, &index_dir, &query_results_path, false, false, 0.5)
             .expect("Failed to query sequences");
     
         let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
@@ -2706,7 +2720,7 @@ mod tests {
     
         let query_results_path = format!("{}/query_results.csv", index_dir);
         
-        query_index(&file1_path, &index_dir, &query_results_path, false, false)
+        query_index(&file1_path, &index_dir, &query_results_path, false, false, 0.5)
             .expect("Failed to query sequences");
     
         let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
@@ -2807,7 +2821,7 @@ mod tests {
     
         let query_results_path = format!("{}/query_results.csv", index_dir);
         
-        query_index(&file1_path, &index_dir, &query_results_path, false, false)
+        query_index(&file1_path, &index_dir, &query_results_path, false, false, 0.5)
             .expect("Failed to query sequences");
     
         let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
@@ -2905,7 +2919,7 @@ mod tests {
     
         let query_results_path = format!("{}/query_results.csv", index_dir);
         
-        query_index(&file1_path, &index_dir, &query_results_path, false, false)
+        query_index(&file1_path, &index_dir, &query_results_path, false, false, 0.5)
             .expect("Failed to query sequences");
     
         let mut reader = csv::Reader::from_reader(File::open(&query_results_path).expect("Failed to open query results"));
@@ -3004,7 +3018,7 @@ mod tests {
 
         let query_results_path = format!("{}/query_results.csv", index_dir);
 
-        query_index(&file2_path, &index_dir, &query_results_path, false, false)
+        query_index(&file2_path, &index_dir, &query_results_path, false, false, 0.5)
             .expect("Failed to query sequences");
 
         // Validate the results written to the query results CSV file
@@ -3096,7 +3110,7 @@ mod tests {
 
         let query_results_path = format!("{}/query_results.csv", index_dir);
 
-        query_index(&file2_path, &index_dir, &query_results_path, false, false)
+        query_index(&file2_path, &index_dir, &query_results_path, false, false, 0.5)
             .expect("Failed to query sequences");
 
         // Validate the results written to the query results CSV file
@@ -3198,7 +3212,7 @@ mod tests {
         fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p3.txt", "test_files_bq2/partitioned_bloom_filters_p3.txt");
         */
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file2_path, &test_dir, &query_results_path, false, false) // query sequences from file1
+        query_index(&file2_path, &test_dir, &query_results_path, false, false, 0.5) // query sequences from file1
             .expect("Failed to query sequences");
 
         
@@ -3304,7 +3318,7 @@ mod tests {
         fs::rename("test_files_bq2/partitioned_bloom_filters_c0_p3.txt", "test_files_bq2/partitioned_bloom_filters_p3.txt");
         */
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file2_path, &test_dir, &query_results_path, false, false) // query sequences from file1
+        query_index(&file2_path, &test_dir, &query_results_path, false, false, 0.5) // query sequences from file1
             .expect("Failed to query sequences");
 
         
@@ -3409,7 +3423,7 @@ mod tests {
         fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
         */
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file1_path, &test_dir, &query_results_path, false, false) // query sequences from file1
+        query_index(&file1_path, &test_dir, &query_results_path, false, false, 0.5) // query sequences from file1
             .expect("Failed to query sequences");
 
         
@@ -3516,7 +3530,7 @@ mod tests {
         fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
         */
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file1_path, &test_dir, &query_results_path, false, false) // query sequences from file1
+        query_index(&file1_path, &test_dir, &query_results_path, false, false, 0.5) // query sequences from file1
             .expect("Failed to query sequences");
 
         
@@ -3617,7 +3631,7 @@ mod tests {
         fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
         */
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file1_path, &test_dir, &query_results_path, false, false) // query sequences from file1
+        query_index(&file1_path, &test_dir, &query_results_path, false, false, 0.5) // query sequences from file1
             .expect("Failed to query sequences");
 
        
@@ -3717,7 +3731,7 @@ mod tests {
         fs::rename("test_files_bq3/partitioned_bloom_filters_c0_p3.txt", "test_files_bq3/partitioned_bloom_filters_p3.txt");
         */
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file1_path, &test_dir, &query_results_path, false, false) // query sequences from file1
+        query_index(&file1_path, &test_dir, &query_results_path, false, false, 0.5) // query sequences from file1
             .expect("Failed to query sequences");
 
        
@@ -4025,7 +4039,7 @@ mod tests {
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
 
-        query_index(&file1_path, &test_dir, &query_results_path, false, false)
+        query_index(&file1_path, &test_dir, &query_results_path, false, false, 0.5)
             .expect("Failed to query sequences");
 
         let mut reader =
@@ -4189,7 +4203,7 @@ mod tests {
         )
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file6_path, &test_dir, &query_results_path, false, false)
+        query_index(&file6_path, &test_dir, &query_results_path, false, false, 0.5)
             .expect("Failed to query sequences");
 
        
@@ -4314,7 +4328,7 @@ mod tests {
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
 
-        query_index(&file5_path, &test_dir, &query_results_path, false, false)
+        query_index(&file5_path, &test_dir, &query_results_path, false, false, 0.5)
             .expect("Failed to query sequences");
 
         let mut reader =
@@ -4443,7 +4457,7 @@ mod tests {
         )
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
-        query_index(&file5_path, &test_dir, &query_results_path, false, false)
+        query_index(&file5_path, &test_dir, &query_results_path, false, false, 0.5)
             .expect("Failed to query sequences");
 
         
@@ -4655,7 +4669,7 @@ mod tests {
         .expect("Failed to build index");
         let query_results_path = format!("{}/query_results.csv", index_dir);
 
-        query_index(&file2_path, &test_dir, &query_results_path, false, false)
+        query_index(&file2_path, &test_dir, &query_results_path, false, false, 0.5)
             .expect("Failed to query sequences");
 
         let mut reader =
@@ -4744,7 +4758,8 @@ mod tests {
             test_dir,
             &output_path,
             true, //  graph coloring
-            false,
+            false, 
+            0.5,
         )
         .expect("Failed to color graph");
 

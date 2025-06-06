@@ -125,7 +125,14 @@ pub fn parse_args() -> ArgMatches {
                 .short('n')
                 .long("normalize")
                 .value_name("NORMALIZE")
-                .help("For 'query' mode: bool for normalizing abundances based on sequencing depth estimates (default: false)\n"),
+                .help("For 'query' mode: bool for normalizing abundances based on sequencing depth estimates (default: false)"),
+        ).arg(
+            Arg::new("coverage")
+                .short('C')
+                .long("coverage-min")
+                .value_name("COVERAGE")
+                .action(ArgAction::Set)
+                .help("For 'query' mode : Minimum proportion of kmers that must be present in the query sequence in order to propose an abundance value, 0 < C <= 1 (default: 0.5)")
         )
         .arg(
             Arg::new("debug")

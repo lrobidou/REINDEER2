@@ -170,6 +170,11 @@ fn main() -> io::Result<()> {
                 .map(|s| s.parse::<bool>().expect("Invalid color option"))
                 .unwrap_or(false);
 
+            let coverage = matches
+                .get_one::<String>("coverage")
+                .map(|s| s.parse::<f32>().expect("Invalid coverage threshold value"))
+                .unwrap_or(0.5); // default size
+
             let normalize_option = matches
                 .get_one::<String>("normalize")
                 .map(|s| s.parse::<bool>().expect("Invalid normalize option"))
@@ -184,7 +189,7 @@ fn main() -> io::Result<()> {
             }
 
             let start_time = Instant::now();
-            query_index(fasta_file, index_dir, &query_output, color_graph, normalize_option).expect("Failed to query sequences");
+            query_index(fasta_file, index_dir, &query_output, color_graph, normalize_option, coverage).expect("Failed to query sequences");
 
             println!("Query complete in {:.2?}", start_time.elapsed());
         }

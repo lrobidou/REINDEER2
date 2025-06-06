@@ -10,6 +10,11 @@ For public datasets, the sequencing files may already have been processed into u
 
 ## Installation
 
+### Requirements
+
+- cargo >= 1.81.0
+- rustc >= 1.81.0
+
 ### Compilation
 
 Clone the repository :
@@ -49,7 +54,7 @@ General parameters:
 - `-a, --abundance` the abundance granularity (number of levels or discretized abundance values)
 - `-A, --abundance-max` the maximal abundance to take into account
 - `-d, --dense` (true/false) allows to index dense k-mers - shared k-mers among datasets - more efficiently (default: false)
-- `-u, --muset` (true/false) the index takes as input the output directory of Muset, containing at least 'unitigs.fa' and 'unitigs.abundance.mat' (default: false)
+<!-- - `-u, --muset` (true/false) the index takes as input the output directory of Muset, containing at least 'unitigs.fa' and 'unitigs.abundance.mat' (default: false) -->
 
 Advanced parameters: 
 - `-b, --bloomfilter` the Bloom filter size in log2 scale
@@ -64,8 +69,10 @@ For **query** mode, the parameters are the FASTA file containing the sequence(s)
 
 `Reindeer2 --mode query --fasta sequences_query.fa --index ~/index_directory`
 
-The `-c, --color` parameter (*true*/*false*) is used to define the query output format.
-Additionnaly, the `-n, --normalize` parameter allows to normalize abundances based on sequencing depth estimates.
+Optional parameters:
+- `-c, --color` (true/false) is used to annotate the input file with abundances rather than producing the standard output file (as showed in the examples below) (default: false)
+- `-n, --normalize` (true/false) parameter allows to normalize abundances based on sequencing depth estimates. The calculation is $normalized\_abundance = raw\_abundance / number\_of\_kmers\_in\_the\_dataset * 1\_000\_000$ (default: false)
+- `-C, --coverage-min` minimum proportion of kmers that must be present in the query sequence in order to propose an abundance value
 
 #### CSV file with --color false (default)
 
