@@ -103,7 +103,7 @@ is expected the result:
 header,file,abundance
 >seq1 ka:f:30,0,29
 >seq2 ka:f:30,0,29
->seq3 ka:f:1500,0,1450
+>seq3 ka:f:1500,0,1470
 >seq3 ka:f:1500,1,4
 ```
 
@@ -120,7 +120,7 @@ is expected the result:
 AAAAAAAAAAAAAAAAAAAAAACACAGATCA
 >seq2 ka:f:30 col:0:29 col:1:0
 AAAAAAAAAAAAAAAAAAAAACACAGATCAT
->seq3 ka:f:1500 col:0:1450 col:1:4
+>seq3 ka:f:1500 col:0:1470 col:1:4
 AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA
 ```
 
