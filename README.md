@@ -71,7 +71,7 @@ For **query** mode, the parameters are the FASTA file containing the sequence(s)
 
 Optional parameters:
 - `-c, --color` (true/false) is used to annotate the input file with abundances rather than producing the standard output file (as showed in the examples below) (default: false)
-- `-n, --normalize` (true/false) parameter allows to normalize abundances based on sequencing depth estimates. The calculation is $normalized\_abundance = raw\_abundance / number\_of\_kmers\_in\_the\_dataset * 1\_000\_000$ (default: false)
+- `-n, --normalize` (true/false) parameter allows to normalize abundances based on sequencing depth estimates. The calculation is _normalized\_abundance = raw\_abundance / number\_of\_kmers\_in\_the\_dataset * 1\_000\_000_ (default: false)
 - `-C, --coverage-min` minimum proportion of kmers that must be present in the query sequence in order to propose an abundance value
 
 #### CSV file with --color false (default)
