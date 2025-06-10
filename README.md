@@ -89,7 +89,7 @@ To illustrate how the tool works, a small example is available. The commands are
 #### INDEX
 How to build the index:
 ```
-Reindeer2 --mode index --fof test_files/fof.txt --kmer 31 --output-dir ../index_test
+Reindeer2 --mode index --input test_files/fof.txt --kmer 31 --output-dir ../index_test
 ```
 
 #### QUERY (results: CSV)
