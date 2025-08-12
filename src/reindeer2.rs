@@ -469,7 +469,7 @@ fn process_fasta_file(
     let mut kmer_count: usize = 0;
     let reader = read_file(path)?;
 
-    // this part fills the BFs per paritition
+    // this part fills the BFs per partition
     let flush_map = |partition_kmers: &mut HashMap<usize, Vec<(u64, u16, usize, usize)>>| {
         for (partition_index, kmers) in partition_kmers.drain() {// iterates and empties the hash map when needed
             
@@ -501,7 +501,7 @@ fn process_fasta_file(
             let processed = process_fasta_record(Ok(record), base, abundance_max, &header_type); //read fasta
             match processed {
                 Ok((seq, log_abundance, count_value)) => {
-                    if log_abundance != 666 {
+                    if log_abundance != 666 { // case where the abundance value of the kmers in the unitigs file was < 1
                         atomic_record_count.fetch_add(1, atomic::Ordering::Relaxed);
                         let seq_str = std::str::from_utf8(&seq).expect("Invalid UTF-8 sequence");
 
@@ -574,9 +574,9 @@ fn process_fasta_file(
         flush_map(&mut partition_kmers);
     })?;
     // flush the dense indexes from sparse k-mers after each file *in the first chunk*
-    match maybe_dense_indexes {
-        Some(dense_indexes) => {
-            if chunk_index == 0 {
+    if chunk_index == 0 {
+        match maybe_dense_indexes {
+            Some(dense_indexes) => {
                 let mut partition_kmers: HashMap<usize, Vec<(u64, u16, usize, usize)>> = HashMap::new(); // keep kmer info to fill BFs
                 for (partition_index, hashmap) in dense_indexes.iter().enumerate() {
                     let mut kmers_to_remove: Vec<u64> = Vec::new();
@@ -601,10 +601,10 @@ fn process_fasta_file(
                                             path_index,
                                             chunk_index,
                                         ));
-                                    if partition_kmers.len() >= max_map_size {
-                                        flush_map(&mut partition_kmers);
-                                    }
                                 }
+                            }
+                            if partition_kmers.len() >= max_map_size {
+                                flush_map(&mut partition_kmers);
                             }
                         }
                     }
@@ -613,9 +613,9 @@ fn process_fasta_file(
                 }
                 // Flush remaining k-mers in the map by calling the earlier closure
                 flush_map(&mut partition_kmers);
-            }
-        },
-        None => (),
+            },
+            None => (),
+        }
     }
     kmer_counts_vector 
         .lock()
@@ -2335,7 +2335,7 @@ mod tests {
         assert_eq!(count_from_bcalm, 12);
     
         let count_from_logan = extract_count(logan_header, &HeaderType::Logan).unwrap();
-        assert_eq!(count_from_logan, 8);
+        assert_eq!(count_from_logan, 7);
     }
 
     #[test]

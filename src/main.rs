@@ -18,6 +18,10 @@ fn main() -> io::Result<()> {
     let mode = matches
         .get_one::<String>("mode")
         .expect("Required argument for mode (index or query)");
+    let max_threads = matches 
+        .get_one::<String>("threads")
+        .map(|s| s.parse::<usize>().expect("Invalid number of threads"))
+        .unwrap_or(1); // default number of threads
 
     match mode.as_str() {
         "index" => {
@@ -95,6 +99,8 @@ fn main() -> io::Result<()> {
                     println!("WARNING : the abundance granularity exceeds the requirements of the '--dense' (<256). The abundance granularity is now set to 255.");
 
                 }
+            } else {
+                rayon::ThreadPoolBuilder::new().num_threads(max_threads).build_global().unwrap();
             }
             let minimizer = if kmer < minimizer {
                     println!("WARNING : the minimizer size '{}' exceeds the k-mer size '{}'. The minimiser size is now set to '{}'", minimizer, kmer, kmer);
@@ -104,13 +110,13 @@ fn main() -> io::Result<()> {
                 };
             println!("");
 
+            let tolerated_number_of_zeros = 0;
+
             let start_time = Instant::now();
 
             if false { //muset_option {
 
                 let (unitigs_file, matrix_file, color_nb) = explore_muset_dir(input)?;
-
-                let threshold = color_nb; // TODO invert the threshold
 
                 build_index_muset(
                     unitigs_file,
@@ -124,7 +130,7 @@ fn main() -> io::Result<()> {
                     abundance_max,
                     output_dir,
                     dense_option,
-                    threshold,
+                    tolerated_number_of_zeros,
                     debug,
                 )?;
 
@@ -132,7 +138,7 @@ fn main() -> io::Result<()> {
                 // read the file of files  and extract file paths and color count
                 let (file_paths, color_nb) = read_fof_file(input)?;
 
-                let threshold = color_nb; // TODO invert the threshold
+                
 
                 // run the index construction process: build and fill BFs per partitions and in chunks, serialize, merge chunks
                 build_index(
@@ -146,7 +152,7 @@ fn main() -> io::Result<()> {
                     abundance_max,
                     output_dir, 
                     dense_option,
-                    threshold,
+                    tolerated_number_of_zeros,
                     debug,
                 )?;
             }
@@ -157,6 +163,8 @@ fn main() -> io::Result<()> {
         }
 
         "query" => {
+            rayon::ThreadPoolBuilder::new().num_threads(max_threads).build_global().unwrap();
+
             let fasta_file = matches
                 .get_one::<String>("fasta")
                 .expect("Required argument for FASTA file in query mode");

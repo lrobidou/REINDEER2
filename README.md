@@ -55,6 +55,7 @@ General parameters:
 - `-A, --abundance-max` the maximal abundance to take into account
 - `-d, --dense` (true/false) allows to index dense k-mers - shared k-mers among datasets - more efficiently (default: false)
 <!-- - `-u, --muset` (true/false) the index takes as input the output directory of Muset, containing at least 'unitigs.fa' and 'unitigs.abundance.mat' (default: false) -->
+- `-t, --threads` the maximal number of threads used (default: 1)
 
 Advanced parameters: 
 - `-b, --bloomfilter` the Bloom filter size in log2 scale
@@ -123,5 +124,4 @@ AAAAAAAAAAAAAAAAAAAAACACAGATCAT
 >seq3 ka:f:1500 col:0:1470 col:1:4
 AAAAAAAAAAAAAAAAAAAAAACAAAAAGAA
 ```
-
 

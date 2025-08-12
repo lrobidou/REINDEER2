@@ -6,7 +6,7 @@ pub fn parse_args() -> ArgMatches {
         .version("1.0")
         .author("Camille Marchet, Yohan Hernandez--Courbevoie")
         .about("REINDEER2\nk-mer quantification in large collections of samples")
-        .after_help("Example:\n  $ Reindeer2 --mode index --fof test_files/fof.txt --kmer 31 -ooutput ../index_test\n  $ Reindeer2 --mode query --fasta test_files/file1Q.fa --index ../index_test")
+        .after_help("Example:\n  $ Reindeer2 --mode index --input test_files/fof.txt --kmer 31 --output-dir ../index_test\n  $ Reindeer2 --mode query --fasta test_files/file1Q.fa --index ../index_test")
         .disable_version_flag(true)
         .disable_help_flag(true)
         .arg(
@@ -74,7 +74,7 @@ pub fn parse_args() -> ArgMatches {
                 .value_name("DENSE")
                 .action(ArgAction::Set)
                 .help("For 'index' mode: If set, allows to index dense k-mers - i.e. shared k-mers among datasets - more efficiently, at the cost of higher RAM consumption, \
-                limited parameters (k-mer size <= 32, number of abundance levels <= 255) and limited multithreading on small datasets (default: false)")
+                limited parameters (k-mer size <= 32, number of abundance levels <= 255) and limited multithreading (default: false)")
         )
         // .arg(
         //     Arg::new("threshold")
@@ -126,13 +126,22 @@ pub fn parse_args() -> ArgMatches {
                 .long("normalize")
                 .value_name("NORMALIZE")
                 .help("For 'query' mode: bool for normalizing abundances based on sequencing depth estimates (default: false)"),
-        ).arg(
+        )
+        .arg(
             Arg::new("coverage")
                 .short('C')
                 .long("coverage-min")
                 .value_name("COVERAGE")
                 .action(ArgAction::Set)
                 .help("For 'query' mode : Minimum proportion of kmers that must be present in the query sequence in order to propose an abundance value, 0 < C <= 1 (default: 0.5)")
+        )
+        .arg(
+            Arg::new("threads")
+                .short('t')
+                .long("threads")
+                .value_name("THREADS")
+                .action(ArgAction::Set)
+                .help("Define a number of threads available (default: 1)")
         )
         .arg(
             Arg::new("debug")
